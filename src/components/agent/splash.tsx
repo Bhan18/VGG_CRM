@@ -1,22 +1,11 @@
 "use client";
 
-// Splash — shown for ~1.2s while the app boots and auth is being restored.
-// Displays a branded loading animation instead of the logo/name.
+// Splash — shown while the app boots / auth is being restored.
+// The parent controls dismissal: `leaving` triggers the fade-out,
+// then the component is unmounted. Displays a branded loading
+// animation instead of the logo/name.
 
-import { useEffect, useState } from "react";
-
-export function AgentSplash({ onDone }: { onDone: () => void }) {
-  const [leaving, setLeaving] = useState(false);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setLeaving(true), 900);
-    const t2 = setTimeout(onDone, 1200);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [onDone]);
-
+export function AgentSplash({ leaving }: { leaving: boolean }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-300"

@@ -31,7 +31,6 @@ export default function AgentPage() {
   const { session, loading, refreshSession } = useAgentAuth();
   const { tab, setTab } = useAgentNav();
   const submit = useSubmitAttendance();
-  const [booted, setBooted] = useState(false);
   const [capture, setCapture] = useState<CaptureState>({ open: false });
 
   // Lock body scroll while camera is open.
@@ -50,6 +49,21 @@ export default function AgentPage() {
   }, []);
 
   const closeCapture = useCallback(() => setCapture({ open: false }), []);
+
+  // Boot sequence — splash waits in parallel with the auth session check
+  // (min ~350ms), then hands straight to sign-in or the app. No extra
+  // spinner stage, so opening is as fast as the session fetch allows.
+  const [splash, setSplash] = useState<"visible" | "leaving" | "gone">("visible");
+
+  useEffect(() => {
+    if (loading) return;
+    const t1 = setTimeout(() => setSplash("leaving"), 350);
+    const t2 = setTimeout(() => setSplash("gone"), 700);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [loading]);
 
   const onSubmit = useCallback(
     async ({ photoBase64, geo }: { photoBase64: string; geo: import("@/lib/agent/types").GeoReading | null }) => {
@@ -75,13 +89,8 @@ export default function AgentPage() {
   );
 
   // Boot sequence — splash first.
-  if (!booted) {
-    return <AgentSplash onDone={() => setBooted(true)} />;
-  }
-
-  // Loading session after splash.
-  if (loading) {
-    return <BootSpinner />;
+  if (splash !== "gone") {
+    return <AgentSplash leaving={splash === "leaving"} />;
   }
 
   // Not signed in.
@@ -118,17 +127,6 @@ export default function AgentPage() {
           onCancel={closeCapture}
         />
       )}
-    </div>
-  );
-}
-
-function BootSpinner() {
-  return (
-    <div className="flex min-h-dynamic items-center justify-center" style={{ background: "var(--brand-paper)" }}>
-      <div
-        className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand-emerald)] border-t-transparent"
-        aria-label="Loading"
-      />
     </div>
   );
 }
