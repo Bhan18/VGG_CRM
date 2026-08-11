@@ -23,9 +23,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     icons.push({ src: logoUrl, sizes: "any", type: "image/png", purpose: "any" });
   }
   icons.push(
-    { src: "/agent-icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-    { src: "/agent-icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-    { src: "/agent-icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+    { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+    { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
   );
 
   return {
