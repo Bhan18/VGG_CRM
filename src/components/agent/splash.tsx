@@ -1,15 +1,11 @@
 "use client";
 
 // Splash — shown for ~1.2s while the app boots and auth is being restored.
-// Uses branding app_name + logo (or monogram fallback). Colors are fixed
-// (emerald + gold).
+// Displays a branded loading animation instead of the logo/name.
 
 import { useEffect, useState } from "react";
-import { useBranding } from "@/hooks/agent/use-branding";
-import { BrandLogo } from "./brand-logo";
 
 export function AgentSplash({ onDone }: { onDone: () => void }) {
-  const { branding } = useBranding();
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
@@ -30,25 +26,39 @@ export function AgentSplash({ onDone }: { onDone: () => void }) {
         opacity: leaving ? 0 : 1,
       }}
     >
-      <div className="flex flex-col items-center gap-4">
-        <div
-          className="flex h-20 w-20 items-center justify-center rounded-2xl"
-          style={{
-            background:
-              "linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-emerald-soft) 100%)",
-            boxShadow:
-              "0 12px 36px -8px color-mix(in srgb, var(--brand-emerald) 60%, transparent)",
-          }}
-        >
-          <BrandLogo size={56} onDark />
+      <div className="flex flex-col items-center gap-6">
+        {/* Dual-ring loading animation */}
+        <div className="relative h-20 w-20">
+          <span
+            className="absolute inset-0 rounded-full"
+            style={{ border: "2px solid rgba(255,255,255,0.08)" }}
+          />
+          <span
+            className="absolute inset-0 animate-spin rounded-full"
+            style={{
+              border: "3px solid transparent",
+              borderTopColor: "var(--brand-gold)",
+              borderRightColor: "var(--brand-gold)",
+            }}
+          />
+          <span
+            className="absolute inset-3 rounded-full"
+            style={{
+              border: "3px solid transparent",
+              borderBottomColor: "var(--brand-emerald-soft)",
+              borderLeftColor: "var(--brand-emerald-soft)",
+              animation: "splash-spin-reverse 1.6s linear infinite",
+            }}
+          />
+          <span
+            className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              background: "var(--brand-gold)",
+              animation: "splash-pulse 1.2s ease-in-out infinite",
+            }}
+          />
         </div>
-        <div className="text-center">
-          <div className="text-lg font-semibold text-white">{branding.app_name}</div>
-          {branding.tagline && (
-            <div className="mt-1 text-xs text-white/60">{branding.tagline}</div>
-          )}
-        </div>
-        <div className="mt-2 flex gap-1">
+        <div className="flex gap-1">
           {[0, 1, 2].map((i) => (
             <span
               key={i}
@@ -65,6 +75,10 @@ export function AgentSplash({ onDone }: { onDone: () => void }) {
         @keyframes splash-pulse {
           0%, 100% { opacity: 0.25; transform: scale(0.8); }
           50% { opacity: 1; transform: scale(1.15); }
+        }
+        @keyframes splash-spin-reverse {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
         }
       `}</style>
     </div>
