@@ -20,15 +20,15 @@ export function TopBar() {
 
   return (
     <header
-      className="sticky top-0 z-20 flex items-center justify-between border-b bg-white/90 px-4 py-3 backdrop-blur safe-pt"
+      className="sticky top-0 z-20 flex items-center justify-between border-b bg-white/90 px-4 py-3.5 backdrop-blur safe-pt"
       style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 10%, #e5e0d4)" }}
     >
-      <div className="flex items-center gap-2">
-        <BrandLogo size={28} />
-        <span className="text-sm font-semibold">{title}</span>
+      <div className="flex items-center gap-2.5">
+        <BrandLogo size={32} />
+        <span className="text-base font-semibold">{title}</span>
       </div>
       <div
-        className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+        className="rounded-full px-2.5 py-1 text-[11px] font-medium"
         style={{
           background: "color-mix(in srgb, var(--brand-emerald) 10%, white)",
           color: "var(--brand-emerald)",

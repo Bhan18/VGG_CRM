@@ -4,6 +4,7 @@
 // Hierarchy: greeting → today's attendance → quick actions → latest
 // content (post / videos / brochures).
 
+import { useEffect, useState } from "react";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useAgentNav } from "@/hooks/agent/use-agent-nav";
 import {
@@ -56,10 +57,13 @@ export function HomeTab({ onCheckIn, onCheckOut }: HomeTabProps) {
     <div className="fade-in space-y-7 px-4 pb-6 pt-4">
       {/* Greeting */}
       <section>
-        <p className="text-xs text-muted-foreground">
-          {formatDate(todayKey())}
-        </p>
-        <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-sm font-medium text-muted-foreground">
+            {formatDate(todayKey())}
+          </p>
+          <LiveClock />
+        </div>
+        <h1 className="mt-1.5 text-3xl font-semibold tracking-tight">
           {greetingFor(name)}
         </h1>
       </section>
@@ -241,6 +245,31 @@ export function HomeTab({ onCheckIn, onCheckOut }: HomeTabProps) {
         </div>
       </section>
     </div>
+  );
+}
+
+// ─── Live clock ────────────────────────────────────────────────────────────
+
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <span
+      className="tnum flex-shrink-0 text-sm font-semibold tabular-nums"
+      style={{ color: "var(--brand-emerald)" }}
+    >
+      {now.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      })}
+    </span>
   );
 }
 
