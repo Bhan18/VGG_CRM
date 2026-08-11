@@ -37,6 +37,15 @@ export function useBranding() {
     if (typeof document === "undefined") return;
     if (branding.app_name) {
       document.title = branding.app_name;
+      for (const name of ["apple-mobile-web-app-title", "application-name"]) {
+        let meta = document.head.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+        if (!meta) {
+          meta = document.createElement("meta");
+          meta.name = name;
+          document.head.appendChild(meta);
+        }
+        meta.content = branding.app_name;
+      }
     }
     if (branding.logo_url) {
       // Update all existing icon links to point at the logo.
