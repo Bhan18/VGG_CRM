@@ -79,13 +79,19 @@ export function ProfileTab() {
           icon={CalendarClock}
           label="Joined on"
           value={
-            p.createdAt
-              ? new Date(p.createdAt).toLocaleDateString("en-IN", {
+            p.joiningDate
+              ? new Date(`${p.joiningDate}T00:00:00`).toLocaleDateString("en-IN", {
                   day: "numeric",
                   month: "short",
                   year: "numeric",
                 })
-              : "—"
+              : p.createdAt
+                ? new Date(p.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—"
           }
         />
       </div>
