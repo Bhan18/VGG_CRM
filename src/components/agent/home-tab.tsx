@@ -266,7 +266,9 @@ function TodayCard({
       className="relative overflow-hidden rounded-2xl p-5 text-white shadow-sm"
       style={{
         background:
-          "linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-emerald-soft) 100%)",
+          checkedIn && !checkedOut
+            ? "linear-gradient(135deg, #c2372e 0%, #e2736b 100%)"
+            : "linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-emerald-soft) 100%)",
       }}
     >
       <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-2xl" />

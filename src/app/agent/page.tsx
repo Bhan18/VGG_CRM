@@ -69,7 +69,7 @@ export default function AgentPage() {
       });
       setCapture({ open: false });
       await refreshSession();
-      setTab("attendance");
+      setTab("home");
     },
     [capture, submit, refreshSession, setTab]
   );

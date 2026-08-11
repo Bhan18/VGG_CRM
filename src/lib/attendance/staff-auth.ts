@@ -11,7 +11,12 @@
 
 import { createHmac } from "node:crypto";
 import { getAttendanceAdminClient } from "./client";
-import { getEmployeeByCode, verifyPassword } from "./employees";
+import {
+  getEmployeeByCode,
+  verifyPassword,
+  hashPassword,
+  isBcryptHash,
+} from "./employees";
 
 const SESSION_SECRET =
   process.env.ATTENDANCE_STAFF_SESSION_SECRET ??
@@ -80,6 +85,17 @@ export async function loginStaff(opts: {
   }
   if (!verifyPassword(opts.password, employee.password_hash)) {
     return { ok: false, reason: "Invalid credentials" };
+  }
+  // Upgrade legacy SHA-256 hashes to bcrypt on successful login.
+  if (employee.password_hash && !isBcryptHash(employee.password_hash)) {
+    const supabase = getAttendanceAdminClient();
+    await supabase
+      .from("attendance_employees")
+      .update({
+        password_hash: hashPassword(opts.password),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", employee.id);
   }
   const session: StaffSession = {
     employeeId: employee.id,

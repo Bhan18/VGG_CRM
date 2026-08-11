@@ -2,10 +2,12 @@
  * Employee service — CRUD + activate/deactivate + password reset.
  *
  * Backed by the ATTENDANCE Supabase project (PostgreSQL).
- * Passwords are stored as SHA-256(salt:password) hashes.
+ * Passwords are stored as bcrypt hashes. Legacy SHA-256(salt:password)
+ * hashes are still accepted at login and upgraded to bcrypt automatically.
  */
 
-import { randomBytes, createHash } from "node:crypto";
+import { createHash } from "node:crypto";
+import bcrypt from "bcryptjs";
 import {
   getAttendanceAdminClient,
   type AdminContext,
@@ -49,16 +51,22 @@ export type UpdateEmployeeInput = Partial<CreateEmployeeInput> & {
 
 // ---- Password hashing ---------------------------------------------------
 
+const BCRYPT_ROUNDS = 10;
+
 export function hashPassword(plain: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = createHash("sha256")
-    .update(salt + ":" + plain)
-    .digest("hex");
-  return `${salt}$${hash}`;
+  return bcrypt.hashSync(plain, BCRYPT_ROUNDS);
+}
+
+export function isBcryptHash(stored: string): boolean {
+  return /^\$2[aby]\$\d{2}\$/.test(stored);
 }
 
 export function verifyPassword(plain: string, stored: string | null): boolean {
   if (!stored) return false;
+  if (isBcryptHash(stored)) {
+    return bcrypt.compareSync(plain, stored);
+  }
+  // Legacy SHA-256(salt:password) hash — verify so old rows keep working.
   const [salt, hash] = stored.split("$");
   if (!salt || !hash) return false;
   const candidate = createHash("sha256")

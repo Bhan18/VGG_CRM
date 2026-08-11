@@ -210,7 +210,7 @@ function TodayCard({
             onClick={onCheckOut}
             disabled={busy || !online}
             size="lg"
-            variant="outline"
+            variant="destructive"
             className="h-12 w-full rounded-xl text-[15px] font-medium"
           >
             <LogOut className="h-4 w-4" />
