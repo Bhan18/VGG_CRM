@@ -17,7 +17,7 @@ export const metadata: Metadata = {
       { url: "/agent-icons/favicon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/agent-icons/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
-    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icon-192", sizes: "192x192", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,

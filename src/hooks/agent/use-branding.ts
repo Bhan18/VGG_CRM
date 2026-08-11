@@ -23,7 +23,9 @@ export function useBranding() {
   const { data, isLoading } = useQuery<BrandingResponse>({
     queryKey: ["agent", "branding"],
     queryFn: async () => {
-      const res = await fetch("/api/agent/branding", { cache: "no-store" });
+      // Default browser caching — the endpoint sends Cache-Control, so
+      // repeat opens reuse the cached branding instead of refetching.
+      const res = await fetch("/api/agent/branding");
       if (!res.ok) return DEFAULTS;
       return (await res.json()) as BrandingResponse;
     },
@@ -48,30 +50,10 @@ export function useBranding() {
       }
     }
     if (branding.logo_url) {
-      // Update all existing icon links to point at the logo.
-      const links = document.querySelectorAll<HTMLLinkElement>(
-        "link[rel~='icon'], link[rel~='apple-touch-icon']"
-      );
-      links.forEach((l) => {
-        l.href = branding.logo_url!;
-      });
-      // Make sure an icon link exists.
-      if (links.length === 0) {
-        const l = document.createElement("link");
-        l.rel = "icon";
-        l.href = branding.logo_url;
-        document.head.appendChild(l);
-      }
-      // Also set the apple-touch-icon explicitly if missing.
-      const apple = document.querySelector<HTMLLinkElement>(
-        "link[rel='apple-touch-icon']"
-      );
-      if (!apple) {
-        const l = document.createElement("link");
-        l.rel = "apple-touch-icon";
-        l.href = branding.logo_url;
-        document.head.appendChild(l);
-      }
+      // Favicon/apple-touch-icon are already server-rendered at /icon
+      // (which proxies the DB logo through the cached /icon route) — so we
+      // do NOT rewrite them here with the raw logo URL. Only ensure the
+      // apple-mobile-web-app-title meta stays in sync via the block above.
     }
   }, [branding.app_name, branding.logo_url]);
 

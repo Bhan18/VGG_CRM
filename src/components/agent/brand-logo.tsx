@@ -18,9 +18,11 @@ export function BrandLogo({ size = 40, className, onDark = false }: BrandLogoPro
   const { branding } = useBranding();
 
   if (branding.logo_url) {
+    // Serve from the local /icon-192 route: it resizes the DB logo to a
+    // square PNG (cached), so it renders consistently and loads fast.
     return (
       <img
-        src={branding.logo_url}
+        src="/icon-192"
         alt={branding.app_name}
         width={size}
         height={size}
@@ -30,7 +32,6 @@ export function BrandLogo({ size = 40, className, onDark = false }: BrandLogoPro
           height: size,
           objectFit: "contain",
           borderRadius: size * 0.22,
-          background: onDark ? "rgba(255,255,255,0.15)" : "transparent",
         }}
       />
     );
