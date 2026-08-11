@@ -18,6 +18,7 @@ import {
   EyeOff,
   KeyRound,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
@@ -89,6 +90,9 @@ export function ProfileTab() {
         />
       </div>
 
+      {/* Change password */}
+      <ChangePasswordCard />
+
       {/* Note: read-only reminder */}
       <div
         className="mt-4 rounded-xl p-4"
@@ -105,9 +109,6 @@ export function ProfileTab() {
           If any detail looks incorrect, please contact your administrator to update it.
         </div>
       </div>
-
-      {/* Change password */}
-      <ChangePasswordCard />
 
       {/* Sign out */}
       <button
@@ -127,6 +128,7 @@ export function ProfileTab() {
 }
 
 function ChangePasswordCard() {
+  const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -186,108 +188,119 @@ function ChangePasswordCard() {
           borderColor: "color-mix(in srgb, var(--brand-emerald) 15%, transparent)",
         }}
       >
-        <div
-          className="flex items-center gap-2 px-4 py-3"
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center gap-2 px-4 py-3 text-left"
           style={{
             background: "color-mix(in srgb, var(--brand-emerald) 8%, white)",
-            borderBottom: "1px solid color-mix(in srgb, var(--brand-emerald) 12%, transparent)",
+            borderBottom: open
+              ? "1px solid color-mix(in srgb, var(--brand-emerald) 12%, transparent)"
+              : "none",
           }}
+          aria-expanded={open}
         >
           <KeyRound className="h-4 w-4" style={{ color: "var(--brand-emerald)" }} />
-          <div className="text-sm font-semibold">Change password</div>
-        </div>
+          <div className="flex-1 text-sm font-semibold">Change password</div>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+            style={{ color: "var(--brand-ink)" }}
+          />
+        </button>
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-3 p-4">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="pwd-current"
-              className="text-xs font-medium text-[var(--brand-ink)]/70"
-            >
-              Current password
-            </label>
-            <div className="relative">
+        {open && (
+          <form onSubmit={onSubmit} className="flex flex-col gap-3 p-4">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="pwd-current"
+                className="text-xs font-medium text-[var(--brand-ink)]/70"
+              >
+                Current password
+              </label>
+              <div className="relative">
+                <input
+                  id="pwd-current"
+                  name="currentPassword"
+                  type={show ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={current}
+                  onChange={(e) => setCurrent(e.target.value)}
+                  disabled={busy}
+                  className={inputClass}
+                  placeholder="••••••••"
+                />
+                <EyeToggle show={show} onToggle={() => setShow((v) => !v)} />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="pwd-new"
+                className="text-xs font-medium text-[var(--brand-ink)]/70"
+              >
+                New password
+              </label>
               <input
-                id="pwd-current"
-                name="currentPassword"
+                id="pwd-new"
+                name="newPassword"
                 type={show ? "text" : "password"}
-                autoComplete="current-password"
-                value={current}
-                onChange={(e) => setCurrent(e.target.value)}
+                autoComplete="new-password"
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
                 disabled={busy}
                 className={inputClass}
-                placeholder="••••••••"
+                placeholder="At least 4 characters"
               />
-              <EyeToggle show={show} onToggle={() => setShow((v) => !v)} />
             </div>
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="pwd-new"
-              className="text-xs font-medium text-[var(--brand-ink)]/70"
-            >
-              New password
-            </label>
-            <input
-              id="pwd-new"
-              name="newPassword"
-              type={show ? "text" : "password"}
-              autoComplete="new-password"
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="pwd-confirm"
+                className="text-xs font-medium text-[var(--brand-ink)]/70"
+              >
+                Confirm new password
+              </label>
+              <input
+                id="pwd-confirm"
+                name="confirmPassword"
+                type={show ? "text" : "password"}
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                disabled={busy}
+                className={inputClass}
+                placeholder="Re-enter new password"
+              />
+            </div>
+
+            {error && (
+              <div
+                className="rounded-xl px-4 py-3 text-sm"
+                style={{
+                  background: "color-mix(in srgb, var(--brand-checkout) 10%, white)",
+                  color: "var(--brand-checkout)",
+                  border: "1px solid color-mix(in srgb, var(--brand-checkout) 22%, transparent)",
+                }}
+                role="alert"
+              >
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
               disabled={busy}
-              className={inputClass}
-              placeholder="At least 4 characters"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="pwd-confirm"
-              className="text-xs font-medium text-[var(--brand-ink)]/70"
-            >
-              Confirm new password
-            </label>
-            <input
-              id="pwd-confirm"
-              name="confirmPassword"
-              type={show ? "text" : "password"}
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              disabled={busy}
-              className={inputClass}
-              placeholder="Re-enter new password"
-            />
-          </div>
-
-          {error && (
-            <div
-              className="rounded-xl px-4 py-3 text-sm"
+              className="agent-press mt-1 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
               style={{
-                background: "color-mix(in srgb, var(--brand-checkout) 10%, white)",
-                color: "var(--brand-checkout)",
-                border: "1px solid color-mix(in srgb, var(--brand-checkout) 22%, transparent)",
+                background:
+                  "linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-emerald-soft) 100%)",
               }}
-              role="alert"
             >
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={busy}
-            className="agent-press mt-1 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-emerald-soft) 100%)",
-            }}
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-            {busy ? "Saving…" : "Update password"}
-          </button>
-        </form>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+              {busy ? "Saving…" : "Update password"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
