@@ -57,12 +57,10 @@ export function HomeTab({ onCheckIn, onCheckOut }: HomeTabProps) {
     <div className="fade-in space-y-7 px-4 pb-6 pt-4">
       {/* Greeting */}
       <section>
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="text-sm font-medium text-muted-foreground">
-            {formatDate(todayKey())}
-          </p>
+        <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          {formatDate(todayKey())}
           <LiveClock />
-        </div>
+        </p>
         <h1 className="mt-1.5 text-3xl font-semibold tracking-tight">
           {greetingFor(name)}
         </h1>
@@ -260,8 +258,8 @@ function LiveClock() {
 
   return (
     <span
-      className="tnum flex-shrink-0 text-sm font-semibold tabular-nums"
-      style={{ color: "var(--brand-emerald)" }}
+      className="tnum flex-shrink-0 text-sm font-medium tabular-nums text-muted-foreground"
+      aria-live="off"
     >
       {now.toLocaleTimeString("en-IN", {
         hour: "2-digit",

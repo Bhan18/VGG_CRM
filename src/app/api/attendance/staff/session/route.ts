@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       department: rest.department,
       role: rest.role,
       profilePhoto: rest.profile_photo,
+      joiningDate: rest.joining_date ?? null,
       status: rest.status,
     };
 

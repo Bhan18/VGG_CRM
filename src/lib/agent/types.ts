@@ -15,6 +15,7 @@ export interface AgentProfile {
   department: string;
   role: string;
   profilePhoto: string | null;
+  joiningDate: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
