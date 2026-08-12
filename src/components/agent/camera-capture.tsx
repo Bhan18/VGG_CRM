@@ -16,21 +16,37 @@ import type { GeoReading } from "@/lib/agent/types";
 
 interface CameraCaptureProps {
   type: "check_in" | "check_out";
-  onSubmit: (payload: { photoBase64: string; geo: GeoReading | null }) => Promise<void>;
+  onSubmit: (payload: {
+    photoBase64: string;
+    geo: GeoReading | null;
+    reason?: string | null;
+  }) => Promise<void>;
   onCancel: () => void;
   // If provided, shown as a non-blocking banner when the agent is outside
   // the geofence. The agent can still proceed.
   warnAwayMeters?: number | null;
+  // When true (mark outside the allowed early window), a reason from
+  // reasonOptions is required before the mark can be submitted.
+  requiresReason?: boolean;
+  reasonOptions?: string[];
 }
 
 type Stage = "preview" | "captured" | "locating" | "submitting" | "error";
 
-export function CameraCapture({ type, onSubmit, onCancel, warnAwayMeters }: CameraCaptureProps) {
+export function CameraCapture({
+  type,
+  onSubmit,
+  onCancel,
+  warnAwayMeters,
+  requiresReason = false,
+  reasonOptions = [],
+}: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [stage, setStage] = useState<Stage>("preview");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState<string>("");
 
   // Start camera on mount.
   useEffect(() => {
@@ -137,7 +153,11 @@ export function CameraCapture({ type, onSubmit, onCancel, warnAwayMeters }: Came
     }
     setStage("submitting");
     try {
-      await onSubmit({ photoBase64: photoDataUrl, geo });
+      await onSubmit({
+        photoBase64: photoDataUrl,
+        geo,
+        reason: reason || null,
+      });
     } catch (e) {
       setStage("captured");
       setError(
@@ -278,6 +298,30 @@ export function CameraCapture({ type, onSubmit, onCancel, warnAwayMeters }: Came
                 You are {warnAwayMeters < 1000 ? `${Math.round(warnAwayMeters)} m` : `${(warnAwayMeters / 1000).toFixed(2)} km`} away from the office. You can still submit — your attendance will be recorded.
               </div>
             )}
+            {requiresReason && (
+              <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3">
+                <div className="text-xs font-medium text-white/80">
+                  Reason for early {type === "check_in" ? "check-in" : "check-out"}
+                </div>
+                <div className="text-[11px] text-white/50">
+                  You are before the allowed time — pick a reason.
+                </div>
+                <select
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="mt-2.5 w-full appearance-none rounded-lg bg-black/50 px-3 py-2.5 text-sm text-white outline-none"
+                >
+                  <option value="" className="text-black">
+                    Select a reason…
+                  </option>
+                  {reasonOptions.map((opt) => (
+                    <option key={opt} value={opt} className="text-black">
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={retake}
@@ -288,8 +332,8 @@ export function CameraCapture({ type, onSubmit, onCancel, warnAwayMeters }: Came
               </button>
               <button
                 onClick={submit}
-                disabled={stage !== "captured"}
-                className="agent-press flex flex-[1.4] items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white"
+                disabled={stage !== "captured" || (requiresReason && !reason)}
+                className="agent-press flex flex-[1.4] items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white disabled:opacity-50"
                 style={{ background: accent }}
               >
                 <Check className="h-4 w-4" />

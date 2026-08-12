@@ -35,6 +35,12 @@ export async function GET(req: NextRequest) {
     const camelSettings = {
       id: settings.id,
       officeStartTime: settings.office_start_time,
+      officeEndTime: settings.office_end_time,
+      checkInEarlyWindowMinutes: settings.check_in_early_window_minutes,
+      checkOutEarlyWindowMinutes: settings.check_out_early_window_minutes,
+      reasonOptions: Array.isArray(settings.reason_options)
+        ? settings.reason_options
+        : [],
       lateAfterMinutes: settings.late_after_minutes,
       halfDayAfterMinutes: settings.half_day_after_minutes,
       minimumWorkingMinutes: settings.minimum_working_minutes,
@@ -62,6 +68,8 @@ export async function GET(req: NextRequest) {
           checkOutLocationId: today.check_out_location_id,
           checkInDistance: today.check_in_distance,
           checkOutDistance: today.check_out_distance,
+          checkInReason: today.check_in_reason,
+          checkOutReason: today.check_out_reason,
           workingMinutes: today.working_minutes,
           status: today.status,
           markedBy: today.marked_by,

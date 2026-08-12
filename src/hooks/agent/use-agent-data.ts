@@ -106,6 +106,7 @@ export interface AttendanceSubmitInput {
   kind: "CHECK_IN" | "CHECK_OUT";
   photoBlobBase64: string;
   geo: { latitude: number; longitude: number } | null;
+  reason?: string | null;
 }
 
 export interface AttendanceSubmitResult {
@@ -139,6 +140,7 @@ export function useSubmitAttendance() {
           kind: input.kind,
           photoPath: upload.path ?? null,
           gps: input.geo,
+          reason: input.reason ?? null,
         }),
       });
       const mark = await markRes.json().catch(() => ({}));

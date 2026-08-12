@@ -6,8 +6,21 @@
 import { getAttendanceAdminClient } from "./client";
 import { unwrapSingle, unwrapNullable } from "./supabase-helpers";
 
+const DEFAULT_REASON_OPTIONS = [
+  "Traffic",
+  "Personal work",
+  "Emergency",
+  "Family issue",
+  "Travel",
+  "Other",
+];
+
 const DEFAULTS = {
   officeStartTime: "09:00",
+  officeEndTime: "18:00",
+  checkInEarlyWindowMinutes: 45,
+  checkOutEarlyWindowMinutes: 180,
+  reasonOptions: DEFAULT_REASON_OPTIONS,
   lateAfterMinutes: 15,
   halfDayAfterMinutes: 120,
   minimumWorkingMinutes: 480,
@@ -19,6 +32,10 @@ const DEFAULTS = {
 export type AttendanceSettingsRow = {
   id: string;
   office_start_time: string;
+  office_end_time: string;
+  check_in_early_window_minutes: number;
+  check_out_early_window_minutes: number;
+  reason_options: string[];
   late_after_minutes: number;
   half_day_after_minutes: number;
   minimum_working_minutes: number;
@@ -44,6 +61,10 @@ export async function getSettings(): Promise<AttendanceSettingsRow> {
         .insert({
           id: "singleton",
           office_start_time: DEFAULTS.officeStartTime,
+          office_end_time: DEFAULTS.officeEndTime,
+          check_in_early_window_minutes: DEFAULTS.checkInEarlyWindowMinutes,
+          check_out_early_window_minutes: DEFAULTS.checkOutEarlyWindowMinutes,
+          reason_options: DEFAULTS.reasonOptions,
           late_after_minutes: DEFAULTS.lateAfterMinutes,
           half_day_after_minutes: DEFAULTS.halfDayAfterMinutes,
           minimum_working_minutes: DEFAULTS.minimumWorkingMinutes,
@@ -69,6 +90,16 @@ export async function updateSettings(
   };
   if (data.officeStartTime !== undefined)
     update.office_start_time = data.officeStartTime;
+  if (data.officeEndTime !== undefined)
+    update.office_end_time = data.officeEndTime;
+  if (data.checkInEarlyWindowMinutes !== undefined)
+    update.check_in_early_window_minutes = data.checkInEarlyWindowMinutes;
+  if (data.checkOutEarlyWindowMinutes !== undefined)
+    update.check_out_early_window_minutes = data.checkOutEarlyWindowMinutes;
+  if (data.reasonOptions !== undefined)
+    update.reason_options = Array.isArray(data.reasonOptions)
+      ? data.reasonOptions
+      : [];
   if (data.lateAfterMinutes !== undefined)
     update.late_after_minutes = data.lateAfterMinutes;
   if (data.halfDayAfterMinutes !== undefined)

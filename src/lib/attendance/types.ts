@@ -30,6 +30,8 @@ export type AttendanceRecord = {
   checkOutLocationId: string | null;
   checkInDistance: number | null;
   checkOutDistance: number | null;
+  checkInReason: string | null;
+  checkOutReason: string | null;
   workingMinutes: number | null;
   status: "PRESENT" | "LATE" | "HALF_DAY" | "ABSENT" | "ON_LEAVE" | "CANCELLED";
   markedBy: string;
@@ -52,6 +54,10 @@ export type AttendanceLocation = {
 export type AttendanceSettings = {
   id: string;
   officeStartTime: string;
+  officeEndTime: string;
+  checkInEarlyWindowMinutes: number;
+  checkOutEarlyWindowMinutes: number;
+  reasonOptions: string[];
   lateAfterMinutes: number;
   halfDayAfterMinutes: number;
   minimumWorkingMinutes: number;

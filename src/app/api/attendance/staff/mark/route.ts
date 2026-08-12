@@ -20,6 +20,7 @@ export const POST = withAttendanceErrorHandler(async (req: NextRequest) => {
     kind: body.kind,
     photoPath: body.photoPath ?? null,
     gps: body.gps ?? null,
+    reason: body.reason ?? null,
     markedBy: "staff",
   });
   if (!result.ok) {

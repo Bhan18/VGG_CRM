@@ -11,6 +11,7 @@ import {
 } from "./client";
 import { logAudit } from "./audit";
 import { computeStatus, getSettings } from "./settings";
+import { isOutsideWindow } from "./window";
 import {
   verifyAttendanceLocation,
   type LatLng,
@@ -64,6 +65,7 @@ export type MarkAttendanceInput = {
   kind: "CHECK_IN" | "CHECK_OUT";
   photoPath?: string | null;
   gps?: LatLng | null;
+  reason?: string | null;
   markedBy?: string;
 };
 
@@ -259,6 +261,46 @@ export async function markAttendance(
     };
   }
 
+  // Early-window policy: photo check-in/out before the allowed window
+  // (office start minus the check-in early window / office end minus the
+  // check-out early window) requires a staff-provided reason, chosen from
+  // the admin-configured reason options.
+  const windowSettings = {
+    officeStartTime: settings.office_start_time,
+    officeEndTime: settings.office_end_time ?? "18:00",
+    checkInEarlyWindowMinutes: settings.check_in_early_window_minutes ?? 45,
+    checkOutEarlyWindowMinutes: settings.check_out_early_window_minutes ?? 180,
+    timezone: settings.timezone,
+  };
+  const outsideWindow = isOutsideWindow(input.kind, windowSettings, new Date());
+  let reason: string | null = null;
+  if (outsideWindow) {
+    reason =
+      typeof input.reason === "string" && input.reason.trim()
+        ? input.reason.trim()
+        : null;
+    if (!reason) {
+      return {
+        ok: false,
+        reason:
+          input.kind === "CHECK_IN"
+            ? "A reason is required for check-in before the allowed time."
+            : "A reason is required for check-out before the allowed time.",
+        code: "REASON_REQUIRED",
+      };
+    }
+    const options = Array.isArray(settings.reason_options)
+      ? settings.reason_options
+      : [];
+    if (options.length > 0 && !options.includes(reason)) {
+      return {
+        ok: false,
+        reason: "The reason is not one of the allowed options.",
+        code: "INVALID_REASON",
+      };
+    }
+  }
+
   const todayStr = dateOnly(new Date()).toISOString().slice(0, 10);
   const now = new Date().toISOString();
 
@@ -289,6 +331,7 @@ export async function markAttendance(
       check_in_longitude: input.gps?.longitude ?? null,
       check_in_location_id: locationMatch.location?.id ?? null,
       check_in_distance: locationMatch.distance ?? null,
+      check_in_reason: reason,
       status,
       marked_by: input.markedBy ?? "staff",
       updated_at: now,
@@ -359,6 +402,7 @@ export async function markAttendance(
       check_out_longitude: input.gps?.longitude ?? null,
       check_out_location_id: locationMatch.location?.id ?? null,
       check_out_distance: locationMatch.distance ?? null,
+      check_out_reason: reason,
       working_minutes: workingMinutes,
       status,
       updated_at: now,
@@ -754,6 +798,8 @@ export async function getExportRows(opts: {
       date: (r.attendance_date as string)?.slice(0, 10) ?? "",
       checkIn: (r.check_in_time as string) ?? "",
       checkOut: (r.check_out_time as string) ?? "",
+      checkInReason: (r.check_in_reason as string | null) ?? "",
+      checkOutReason: (r.check_out_reason as string | null) ?? "",
       workingHours: r.working_minutes
         ? ((r.working_minutes as number) / 60).toFixed(2)
         : "0",

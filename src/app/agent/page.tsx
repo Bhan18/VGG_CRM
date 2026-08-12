@@ -21,17 +21,40 @@ import { CameraCapture } from "@/components/agent/camera-capture";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useAgentNav } from "@/hooks/agent/use-agent-nav";
 import { useSubmitAttendance, type AttendanceSubmitResult } from "@/hooks/agent/use-agent-data";
-import type { AgentTab } from "@/lib/agent/types";
+import type { AgentSession, AgentTab } from "@/lib/agent/types";
+import { isOutsideWindow } from "@/lib/attendance/window";
 
 type CaptureState =
   | { open: false }
   | { open: true; type: "CHECK_IN" | "CHECK_OUT" };
+
+/** True when a mark of `type` right now is earlier than the allowed window. */
+function isMarkOutsideWindow(
+  session: AgentSession | null,
+  type: "CHECK_IN" | "CHECK_OUT",
+): boolean {
+  if (!session) return false;
+  const s = session.settings;
+  if (!s.officeStartTime || !s.officeEndTime) return false;
+  return isOutsideWindow(
+    type,
+    {
+      officeStartTime: s.officeStartTime,
+      officeEndTime: s.officeEndTime,
+      checkInEarlyWindowMinutes: s.checkInEarlyWindowMinutes ?? 45,
+      checkOutEarlyWindowMinutes: s.checkOutEarlyWindowMinutes ?? 180,
+      timezone: s.timezone,
+    },
+    new Date(),
+  );
+}
 
 export default function AgentPage() {
   const { session, loading, refreshSession } = useAgentAuth();
   const { tab, setTab } = useAgentNav();
   const submit = useSubmitAttendance();
   const [capture, setCapture] = useState<CaptureState>({ open: false });
+  const [reasonRequired, setReasonRequired] = useState(false);
 
   // Lock body scroll while camera is open.
   useEffect(() => {
@@ -44,15 +67,32 @@ export default function AgentPage() {
     }
   }, [capture.open]);
 
-  const startCapture = useCallback((type: "CHECK_IN" | "CHECK_OUT") => {
-    setCapture({ open: true, type });
-  }, []);
+  const startCapture = useCallback(
+    (type: "CHECK_IN" | "CHECK_OUT") => {
+      setReasonRequired(isMarkOutsideWindow(session, type));
+      setCapture({ open: true, type });
+    },
+    [session],
+  );
 
   const closeCapture = useCallback(() => setCapture({ open: false }), []);
 
   // Boot sequence — splash waits in parallel with the auth session check
   // (min ~350ms), then hands straight to sign-in or the app. No extra
   // spinner stage, so opening is as fast as the session fetch allows.
+  //
+  // A refresh (pull-to-refresh while the tab was already running) is
+  // detected via sessionStorage and shows only the loading circle instead
+  // of the full logo splash.
+  const [isRefresh] = useState(() => {
+    try {
+      if (sessionStorage.getItem("agent-booted")) return true;
+      sessionStorage.setItem("agent-booted", "1");
+      return false;
+    } catch {
+      return false;
+    }
+  });
   const [splash, setSplash] = useState<"visible" | "leaving" | "gone">("visible");
 
   useEffect(() => {
@@ -66,14 +106,27 @@ export default function AgentPage() {
   }, [loading]);
 
   const onSubmit = useCallback(
-    async ({ photoBase64, geo }: { photoBase64: string; geo: import("@/lib/agent/types").GeoReading | null }) => {
+    async ({
+      photoBase64,
+      geo,
+      reason,
+    }: {
+      photoBase64: string;
+      geo: import("@/lib/agent/types").GeoReading | null;
+      reason?: string | null;
+    }) => {
       const kind = capture.open ? capture.type : "CHECK_IN";
       const res = await submit.mutateAsync({
         kind,
         photoBlobBase64: photoBase64,
         geo: geo ? { latitude: geo.lat, longitude: geo.lng } : null,
+        reason,
       });
       if (!res.ok) {
+        if (res.code === "REASON_REQUIRED") {
+          // The server still wants a reason — reveal the picker and retry.
+          setReasonRequired(true);
+        }
         // Throw so the camera reverts out of "Submitting…" and shows the
         // readable inline error instead of staying stuck.
         throw new Error(failureMessage(kind, res));
@@ -90,7 +143,7 @@ export default function AgentPage() {
 
   // Boot sequence — splash first.
   if (splash !== "gone") {
-    return <AgentSplash leaving={splash === "leaving"} />;
+    return <AgentSplash leaving={splash === "leaving"} variant={isRefresh ? "spinner" : "logo"} />;
   }
 
   // Not signed in.
@@ -122,9 +175,12 @@ export default function AgentPage() {
 
       {capture.open && (
         <CameraCapture
+          key={capture.type}
           type={capture.type === "CHECK_IN" ? "check_in" : "check_out"}
           onSubmit={onSubmit}
           onCancel={closeCapture}
+          requiresReason={reasonRequired}
+          reasonOptions={session.settings.reasonOptions ?? []}
         />
       )}
     </div>
@@ -139,6 +195,11 @@ function failureMessage(
     return kind === "CHECK_IN"
       ? "You are outside the permitted area for check-in. Move closer to the office and try again."
       : "You are outside the permitted area for check-out. Move closer to the office and try again.";
+  }
+  if (res.code === "REASON_REQUIRED") {
+    return kind === "CHECK_IN"
+      ? "Check-in is before the allowed time. Pick a reason to continue."
+      : "Check-out is before the allowed time. Pick a reason to continue.";
   }
   return res.error ?? "Could not submit. Please try again.";
 }

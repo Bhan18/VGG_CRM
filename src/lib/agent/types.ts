@@ -38,6 +38,8 @@ export interface AgentTodayRecord {
   checkOutLocationId: string | null;
   checkInDistance: number | null;
   checkOutDistance: number | null;
+  checkInReason: string | null;
+  checkOutReason: string | null;
   workingMinutes: number | null;
   status: string;
   markedBy: string;
@@ -49,6 +51,10 @@ export interface AgentTodayRecord {
 export interface AgentSettings {
   id: string;
   officeStartTime: string;
+  officeEndTime: string;
+  checkInEarlyWindowMinutes: number;
+  checkOutEarlyWindowMinutes: number;
+  reasonOptions: string[];
   lateAfterMinutes: number;
   halfDayAfterMinutes: number;
   minimumWorkingMinutes: number;

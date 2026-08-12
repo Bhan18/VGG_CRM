@@ -26,6 +26,8 @@ type RecordRow = {
   check_out_location_id: string | null;
   check_in_distance: number | null;
   check_out_distance: number | null;
+  check_in_reason: string | null;
+  check_out_reason: string | null;
   working_minutes: number | null;
   status: string;
   marked_by: string;
@@ -85,6 +87,8 @@ export function mapRecord(row: RecordRow | null) {
     checkOutLocationId: rest.check_out_location_id,
     checkInDistance: rest.check_in_distance,
     checkOutDistance: rest.check_out_distance,
+    checkInReason: rest.check_in_reason,
+    checkOutReason: rest.check_out_reason,
     workingMinutes: rest.working_minutes,
     markedBy: rest.marked_by,
     createdAt: rest.created_at,
@@ -149,6 +153,10 @@ export function mapSettings(s: AttendanceSettingsRow) {
   return {
     id: s.id,
     officeStartTime: s.office_start_time,
+    officeEndTime: s.office_end_time,
+    checkInEarlyWindowMinutes: s.check_in_early_window_minutes,
+    checkOutEarlyWindowMinutes: s.check_out_early_window_minutes,
+    reasonOptions: Array.isArray(s.reason_options) ? s.reason_options : [],
     lateAfterMinutes: s.late_after_minutes,
     halfDayAfterMinutes: s.half_day_after_minutes,
     minimumWorkingMinutes: s.minimum_working_minutes,

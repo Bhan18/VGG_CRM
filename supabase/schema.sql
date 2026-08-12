@@ -48,6 +48,8 @@ create table if not exists attendance_records (
   check_out_location_id text,
   check_in_distance     double precision,
   check_out_distance    double precision,
+  check_in_reason       text,
+  check_out_reason      text,
   working_minutes       integer,
   status                text not null default 'PRESENT'
     check (status in ('PRESENT', 'LATE', 'HALF_DAY', 'ABSENT', 'ON_LEAVE', 'CANCELLED')),
@@ -56,6 +58,9 @@ create table if not exists attendance_records (
   updated_at            timestamptz not null default now(),
   unique (employee_id, attendance_date)
 );
+-- Existing deployments: add the reason columns if they're missing.
+alter table attendance_records add column if not exists check_in_reason text;
+alter table attendance_records add column if not exists check_out_reason text;
 create index if not exists idx_attendance_records_date on attendance_records (attendance_date);
 create index if not exists idx_attendance_records_status on attendance_records (status);
 create index if not exists idx_attendance_records_emp_date on attendance_records (employee_id, attendance_date);
@@ -74,16 +79,25 @@ create table if not exists attendance_locations (
 
 -- ---- attendance_settings (singleton) ----------------------------------
 create table if not exists attendance_settings (
-  id                      text primary key default 'singleton',
-  office_start_time       text not null default '09:00',
-  late_after_minutes      integer not null default 15,
-  half_day_after_minutes  integer not null default 120,
-  minimum_working_minutes integer not null default 480,
-  require_photo           boolean not null default true,
-  require_location        boolean not null default true,
-  timezone                text not null default 'Asia/Kolkata',
-  updated_at              timestamptz not null default now()
+  id                              text primary key default 'singleton',
+  office_start_time               text not null default '09:00',
+  office_end_time                 text not null default '18:00',
+  check_in_early_window_minutes   integer not null default 45,
+  check_out_early_window_minutes  integer not null default 180,
+  reason_options                  jsonb not null default '["Traffic","Personal work","Emergency","Family issue","Travel","Other"]',
+  late_after_minutes              integer not null default 15,
+  half_day_after_minutes          integer not null default 120,
+  minimum_working_minutes         integer not null default 480,
+  require_photo                   boolean not null default true,
+  require_location                boolean not null default true,
+  timezone                        text not null default 'Asia/Kolkata',
+  updated_at                      timestamptz not null default now()
 );
+-- Existing deployments: add the new settings columns if they're missing.
+alter table attendance_settings add column if not exists office_end_time text not null default '18:00';
+alter table attendance_settings add column if not exists check_in_early_window_minutes integer not null default 45;
+alter table attendance_settings add column if not exists check_out_early_window_minutes integer not null default 180;
+alter table attendance_settings add column if not exists reason_options jsonb not null default '["Traffic","Personal work","Emergency","Family issue","Travel","Other"]';
 insert into attendance_settings (id) values ('singleton')
   on conflict (id) do nothing;
 
