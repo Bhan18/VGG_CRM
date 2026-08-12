@@ -82,8 +82,8 @@ export default function AgentPage() {
   // spinner stage, so opening is as fast as the session fetch allows.
   //
   // A refresh (pull-to-refresh while the tab was already running) is
-  // detected via sessionStorage and shows only the loading circle instead
-  // of the full logo splash.
+  // detected via sessionStorage and skips the splash entirely — the app
+  // renders straight through with no overlay.
   const [isRefresh] = useState(() => {
     try {
       if (sessionStorage.getItem("agent-booted")) return true;
@@ -93,10 +93,13 @@ export default function AgentPage() {
       return false;
     }
   });
-  const [splash, setSplash] = useState<"visible" | "leaving" | "gone">("visible");
+  const [splash, setSplash] = useState<"visible" | "leaving" | "gone">(
+    isRefresh ? "gone" : "visible",
+  );
 
   useEffect(() => {
     if (loading) return;
+    if (splash === "gone") return;
     const t1 = setTimeout(() => setSplash("leaving"), 350);
     const t2 = setTimeout(() => setSplash("gone"), 700);
     return () => {
@@ -141,9 +144,15 @@ export default function AgentPage() {
     [capture, submit, refreshSession, setTab]
   );
 
-  // Boot sequence — splash first.
+  // Boot sequence — splash first (cold open only; refresh skips it).
   if (splash !== "gone") {
-    return <AgentSplash leaving={splash === "leaving"} variant={isRefresh ? "spinner" : "logo"} />;
+    return <AgentSplash leaving={splash === "leaving"} />;
+  }
+
+  // Still validating the session after a refresh — hold without an overlay
+  // so the sign-in screen never flashes mid-session.
+  if (loading) {
+    return null;
   }
 
   // Not signed in.
