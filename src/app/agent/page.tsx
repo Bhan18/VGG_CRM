@@ -83,13 +83,25 @@ export default function AgentPage() {
   //
   // A refresh (pull-to-refresh while the tab was already running) skips
   // the splash entirely — the app renders straight through with no overlay.
-  // Detected via the navigation timing API, which is authoritative (a reload
-  // reports type "reload" regardless of storage state).
+  // Detected two independent ways so it holds on any device: sessionStorage
+  // (persists across a reload in the same tab) and the navigation timing
+  // API (reports type "reload").
   const [isRefresh] = useState(() => {
+    try {
+      if (sessionStorage.getItem("agent-booted")) return true;
+    } catch {
+      /* storage unavailable — fall through to the navigation check */
+    }
     const nav = performance.getEntriesByType?.("navigation")[0] as
       | PerformanceNavigationTiming
       | undefined;
-    return nav ? nav.type !== "navigate" : false;
+    if (nav?.type !== "navigate") return true;
+    try {
+      sessionStorage.setItem("agent-booted", "1");
+    } catch {
+      /* ignore */
+    }
+    return false;
   });
   const [splash, setSplash] = useState<"visible" | "leaving" | "gone">(
     isRefresh ? "gone" : "visible",
@@ -100,9 +112,13 @@ export default function AgentPage() {
     if (splash === "gone") return;
     const t1 = setTimeout(() => setSplash("leaving"), 350);
     const t2 = setTimeout(() => setSplash("gone"), 700);
+    // Hard ceiling — the splash must never persist, even if the session
+    // check hangs. 4s is far beyond the normal boot path.
+    const t3 = setTimeout(() => setSplash("gone"), 4000);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
     };
   }, [loading]);
 
