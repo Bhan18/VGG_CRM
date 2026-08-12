@@ -81,17 +81,15 @@ export default function AgentPage() {
   // (min ~350ms), then hands straight to sign-in or the app. No extra
   // spinner stage, so opening is as fast as the session fetch allows.
   //
-  // A refresh (pull-to-refresh while the tab was already running) is
-  // detected via sessionStorage and skips the splash entirely — the app
-  // renders straight through with no overlay.
+  // A refresh (pull-to-refresh while the tab was already running) skips
+  // the splash entirely — the app renders straight through with no overlay.
+  // Detected via the navigation timing API, which is authoritative (a reload
+  // reports type "reload" regardless of storage state).
   const [isRefresh] = useState(() => {
-    try {
-      if (sessionStorage.getItem("agent-booted")) return true;
-      sessionStorage.setItem("agent-booted", "1");
-      return false;
-    } catch {
-      return false;
-    }
+    const nav = performance.getEntriesByType?.("navigation")[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    return nav ? nav.type !== "navigate" : false;
   });
   const [splash, setSplash] = useState<"visible" | "leaving" | "gone">(
     isRefresh ? "gone" : "visible",
