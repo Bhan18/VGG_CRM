@@ -11,6 +11,7 @@ import {
   Users,
   LogOut,
   Shield,
+  Settings,
 } from "lucide-react";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useBranding } from "@/hooks/agent/use-branding";
@@ -19,14 +20,16 @@ import { OverviewTab } from "./overview-tab";
 import { AttendanceTab } from "./attendance-tab";
 import { SalaryTab } from "./salary-tab";
 import { EmployeesTab } from "./employees-tab";
+import { SettingsTab } from "./settings-tab";
 
-type AdminTab = "overview" | "attendance" | "salary" | "employees";
+type AdminTab = "overview" | "attendance" | "salary" | "employees" | "settings";
 
 const TABS: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "attendance", label: "Attendance", icon: CalendarCheck2 },
   { id: "salary", label: "Salary", icon: Banknote },
   { id: "employees", label: "Employees", icon: Users },
+  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 export function AdminDashboard() {
@@ -112,6 +115,7 @@ export function AdminDashboard() {
         {tab === "attendance" && <AttendanceTab />}
         {tab === "salary" && <SalaryTab />}
         {tab === "employees" && <EmployeesTab />}
+        {tab === "settings" && <SettingsTab />}
       </main>
     </div>
   );
