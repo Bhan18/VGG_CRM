@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       employee: safeEmployee,
+      isAdmin: rest.role === "ADMIN" || rest.role === "admin",
       today: camelToday,
       settings: camelSettings,
     });

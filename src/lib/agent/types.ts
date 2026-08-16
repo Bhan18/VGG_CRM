@@ -65,6 +65,7 @@ export interface AgentSettings {
 
 export interface AgentSession {
   employee: AgentProfile;
+  isAdmin?: boolean;
   today: AgentTodayRecord | null;
   settings: AgentSettings;
 }

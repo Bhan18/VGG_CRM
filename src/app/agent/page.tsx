@@ -18,6 +18,7 @@ import { ContentTab } from "@/components/agent/content-tab";
 import { AttendanceTab } from "@/components/agent/attendance-tab";
 import { ProfileTab } from "@/components/agent/profile-tab";
 import { CameraCapture } from "@/components/agent/camera-capture";
+import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useAgentNav } from "@/hooks/agent/use-agent-nav";
 import { useSubmitAttendance, type AttendanceSubmitResult } from "@/hooks/agent/use-agent-data";
@@ -172,6 +173,12 @@ export default function AgentPage() {
   // Not signed in.
   if (!session) {
     return <AgentSignIn />;
+  }
+
+  // Admin role gets the admin dashboard instead of the staff UI.
+  const isAdmin = session.isAdmin || session.employee.role === "ADMIN";
+  if (isAdmin) {
+    return <AdminDashboard />;
   }
 
   return (

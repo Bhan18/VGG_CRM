@@ -10,12 +10,14 @@
  */
 
 import { createHmac } from "node:crypto";
+import { NextResponse } from "next/server";
 import { getAttendanceAdminClient } from "./client";
 import {
   getEmployeeByCode,
   verifyPassword,
   hashPassword,
   isBcryptHash,
+  type AttendanceEmployeeRow,
 } from "./employees";
 
 const SESSION_SECRET =
@@ -28,9 +30,14 @@ export type StaffSession = {
   employeeId: string;
   employeeCode: string;
   name: string;
+  role: string;
   issuedAt: number;
   expiresAt: number;
 };
+
+export function isAdminRole(role: string | null | undefined): boolean {
+  return role === "ADMIN" || role === "admin";
+}
 
 export function signSession(
   s: Omit<StaffSession, "issuedAt" | "expiresAt">,
@@ -101,6 +108,7 @@ export async function loginStaff(opts: {
     employeeId: employee.id,
     employeeCode: employee.employee_code,
     name: employee.name,
+    role: employee.role,
     issuedAt: 0,
     expiresAt: 0,
   };
@@ -126,4 +134,35 @@ export async function getStaffFromSession(
   if (error || !employee) return null;
   if (employee.status !== "ACTIVE") return null;
   return { session: s, employee };
+}
+
+/**
+ * Server-side guard for admin-only API routes. Reads the staff session
+ * cookie, resolves the employee, and returns either the staff record or
+ * a JSON error response (401 / 403).
+ */
+export async function requireAdminSession(req: {
+  cookies: { get(name: string): { value?: string } | undefined };
+}): Promise<
+  | { authorized: true; employee: AttendanceEmployeeRow }
+  | { authorized: false; response: NextResponse }
+> {
+  const token = req.cookies.get("attendance-staff-session")?.value ?? null;
+  const staff = await getStaffFromSession(token);
+  if (!staff) {
+    return {
+      authorized: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
+  if (!isAdminRole(staff.employee.role)) {
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        { error: "Admin privileges required" },
+        { status: 403 },
+      ),
+    };
+  }
+  return { authorized: true, employee: staff.employee };
 }

@@ -415,7 +415,7 @@ export async function listSalaryRecords(opts: {
   year?: number;
   employeeId?: string;
   status?: string;
-}): Promise<Array<SalaryRecordRow & { employee?: { id: string; employee_code: string; name: string; department: string } }>> {
+} = {}): Promise<Array<SalaryRecordRow & { employee?: { id: string; employee_code: string; name: string; department: string } }>> {
   const supabase = getAttendanceAdminClient();
   let query = supabase
     .from("attendance_salary_records")
