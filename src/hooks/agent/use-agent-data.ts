@@ -35,7 +35,7 @@ type MappedRecord = {
   status: string;
 };
 
-export function useAttendanceLog(days = 14) {
+export function useAttendanceLog(days = 365) {
   return useQuery<AttendanceLogEntry[]>({
     queryKey: ["agent", "attendance-log", days],
     queryFn: async () => {

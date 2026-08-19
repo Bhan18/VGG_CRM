@@ -28,6 +28,8 @@ import {
   Clock,
   CheckCircle2,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -309,36 +311,132 @@ function StaffPhotoThumb({ path, label }: { path: string; label: string }) {
 
 function MonthlyStats({ records }: { records: AttendanceLogEntry[] }) {
   const now = new Date();
-  const monthRecords = records.filter((r) => {
-    const d = new Date(`${r.attendanceDate}T00:00:00`);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null); // null = current month
 
-  const present = monthRecords.filter(
-    (r) => r.status === "PRESENT" || r.status === "HALF_DAY",
-  ).length;
-  const late = monthRecords.filter((r) => r.status === "LATE").length;
-  const absent = monthRecords.filter((r) => r.status === "ABSENT").length;
+  // Build list of available months from records (YYYY-MM keys, newest first)
+  const availableMonths = useMemo(() => {
+    const map = new Map<string, string>(); // key → label
+    for (const r of records) {
+      const raw = r.attendanceDate.slice(0, 7); // YYYY-MM
+      if (map.has(raw)) continue;
+      const d = new Date(`${raw}-15T00:00:00`);
+      map.set(raw, d.toLocaleDateString(undefined, { month: "long", year: "numeric" }));
+    }
+    return Array.from(map.entries());
+  }, [records]);
+
+  // Active month key
+  const activeKey = selectedMonth ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const filtered = useMemo(() => {
+    if (selectedMonth === null) {
+      // Current month
+      return records.filter((r) => {
+        const d = new Date(`${r.attendanceDate}T00:00:00`);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+    }
+    if (selectedMonth === "ALL") return records;
+    return records.filter((r) => r.attendanceDate.slice(0, 7) === selectedMonth);
+  }, [records, selectedMonth, now]);
+
+  const present = filtered.filter((r) => r.status === "PRESENT").length;
+  const halfDay = filtered.filter((r) => r.status === "HALF_DAY").length;
+  const late = filtered.filter((r) => r.status === "LATE").length;
+  const absent = filtered.filter((r) => r.status === "ABSENT").length;
 
   const stats = [
     { label: "Present", value: present, color: "text-emerald-600 dark:text-emerald-400" },
+    { label: "Half Day", value: halfDay, color: "text-sky-600 dark:text-sky-400" },
     { label: "Late", value: late, color: "text-amber-600 dark:text-amber-400" },
     { label: "Absent", value: absent, color: "text-rose-600 dark:text-rose-400" },
   ];
 
+  const activeLabel =
+    selectedMonth === null
+      ? "This Month"
+      : selectedMonth === "ALL"
+        ? "All Time"
+        : availableMonths.find(([k]) => k === activeKey)?.[1] ?? activeKey;
+
+  const navPrev = () => {
+    const idx = availableMonths.findIndex(([k]) => k === activeKey);
+    if (selectedMonth === null) {
+      // Go to latest available month (or stay if already there)
+      if (availableMonths.length > 0) setSelectedMonth(availableMonths[0][0]);
+    } else if (idx < availableMonths.length - 1) {
+      setSelectedMonth(availableMonths[idx + 1][0]);
+    }
+  };
+  const navNext = () => {
+    const idx = availableMonths.findIndex(([k]) => k === activeKey);
+    if (selectedMonth === "ALL") return;
+    if (selectedMonth === null) return;
+    if (idx > 0) {
+      setSelectedMonth(availableMonths[idx - 1][0]);
+    } else {
+      setSelectedMonth(null); // back to current month
+    }
+  };
+
   return (
-    <div className="grid grid-cols-3 gap-3">
-      {stats.map((s) => (
-        <div
-          key={s.label}
-          className="rounded-xl border border-border/60 bg-card px-3 py-3 text-center shadow-sm"
+    <div className="space-y-3">
+      {/* Month selector */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={navPrev}
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+          disabled={
+            selectedMonth === "ALL" ||
+            (selectedMonth !== null &&
+              availableMonths.findIndex(([k]) => k === activeKey) >=
+                availableMonths.length - 1)
+          }
         >
-          <div className={cn("tnum text-2xl font-semibold", s.color)}>{s.value}</div>
-          <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {s.label}
-          </div>
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-semibold">{activeLabel}</span>
+          <select
+            value={selectedMonth ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSelectedMonth(v === "" ? null : v);
+            }}
+            className="rounded-lg border border-border/60 bg-card px-2 py-1 text-[12px] text-foreground"
+          >
+            <option value="">This Month</option>
+            {availableMonths.map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+            <option value="ALL">All Time</option>
+          </select>
         </div>
-      ))}
+        <button
+          onClick={navNext}
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+          disabled={selectedMonth === null || selectedMonth === "ALL" || availableMonths.findIndex(([k]) => k === activeKey) <= 0}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-4 gap-2">
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-xl border border-border/60 bg-card px-2 py-3 text-center shadow-sm"
+          >
+            <div className={cn("tnum text-xl font-semibold", s.color)}>{s.value}</div>
+            <div className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+              {s.label}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -23,8 +23,8 @@ export const GET = withAttendanceErrorHandler(
 
     const url = new URL(req.url);
     const days = Math.min(
-      Math.max(parseInt(url.searchParams.get("days") ?? "14", 10) || 14, 1),
-      90,
+      Math.max(parseInt(url.searchParams.get("days") ?? "90", 10) || 90, 1),
+      365,
     );
     const from = new Date();
     from.setDate(from.getDate() - days + 1);
@@ -33,7 +33,7 @@ export const GET = withAttendanceErrorHandler(
     const result = await listRecords({
       employeeId: staff.employee.id,
       dateFrom: fromStr,
-      pageSize: 90,
+      pageSize: 365,
     });
 
     const items = (result.items ?? [])
