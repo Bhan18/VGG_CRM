@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { saveAttendancePhoto } from "@/lib/attendance/photo";
 import { errorResponse } from "@/lib/attendance/server-context";
 
@@ -9,8 +9,8 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const staffToken = req.cookies.get("attendance-staff-session")?.value ?? null;
-    const staff = await getStaffFromSession(staffToken);
+    const employeeId = req.cookies.get("attendance-staff-session")?.value ?? null;
+    const staff = await getStaffFromSession(employeeId);
 
     const body = await req.json().catch(() => null);
     if (!body?.data) return errorResponse("Missing photo data", 400);
@@ -19,15 +19,12 @@ export async function POST(req: NextRequest) {
 
     const result = await saveAttendancePhoto({ data: body.data, prefix });
 
-    // Return BOTH:
-    //   - path  → stored in DB (permanent identifier, used to regenerate signed URLs)
-    //   - url   → signed URL for immediate display (expires after 8h)
-    return applySessionRefresh(req, NextResponse.json({
+    return NextResponse.json({
       url: result.url,
       path: result.path,
       filename: result.path,
       bytes: result.bytes,
-    }));
+    });
   } catch (err) {
     console.error("[attendance/upload-photo] error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";

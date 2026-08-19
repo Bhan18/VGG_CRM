@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { getEmployeeSalaryHistory, getEmployeeSalaryForMonth } from "@/lib/attendance/salary";
 import { getSalarySettings } from "@/lib/attendance/salary";
 import type { SalaryRecordRow } from "@/lib/attendance/salary";
@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
  * Returns the logged-in employee's salary history + current month's record.
  */
 export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
-  const token = req.cookies.get("attendance-staff-session")?.value ?? null;
-  const staff = await getStaffFromSession(token);
+  const employeeId = req.cookies.get("attendance-staff-session")?.value ?? null;
+  const staff = await getStaffFromSession(employeeId);
   if (!staff) return errorResponse("Unauthorized", 401);
 
   const url = new URL(req.url);
@@ -33,7 +33,7 @@ export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
 
   const history = await getEmployeeSalaryHistory(staff.employee.id);
 
-  return applySessionRefresh(req, json({
+  return json({
     settings: settings
       ? {
           baseSalary: settings.base_salary,
@@ -48,5 +48,5 @@ export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
       : null,
     currentRecord,
     history,
-  }));
+  });
 }, "staff/salary");

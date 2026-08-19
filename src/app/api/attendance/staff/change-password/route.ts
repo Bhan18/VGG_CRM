@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { getAttendanceAdminClient } from "@/lib/attendance/client";
 import {
   verifyPassword,
@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.cookies.get("attendance-staff-session")?.value ?? null;
-    const staff = await getStaffFromSession(token);
+    const employeeId = req.cookies.get("attendance-staff-session")?.value ?? null;
+    const staff = await getStaffFromSession(employeeId);
     if (!staff) return errorResponse("Unauthorized", 401);
 
     const body = await req.json().catch(() => null);
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Could not update password. Please try again.", 500);
     }
 
-    return applySessionRefresh(req, NextResponse.json({ ok: true }));
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[attendance/staff/change-password] error:", err);
     const message = err instanceof Error ? err.message : "Unknown server error";

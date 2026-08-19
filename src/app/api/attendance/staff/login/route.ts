@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loginStaff } from "@/lib/attendance/staff-auth";
+import { loginStaff, setSessionCookie } from "@/lib/attendance/staff-auth";
 import { errorResponse } from "@/lib/attendance/server-context";
 import { mapEmployee } from "@/lib/attendance/mappers";
 
@@ -20,16 +20,8 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({
       ok: true,
       employee: mapEmployee(res.employee as Parameters<typeof mapEmployee>[0]),
-      session: res.session,
     });
-    response.cookies.set("attendance-staff-session", res.token, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 8 * 60 * 60,
-      secure: process.env.NODE_ENV === "production",
-    });
-    return response;
+    return setSessionCookie(response, res.employeeId);
   } catch (err) {
     console.error("[attendance/staff/login] error:", err);
     const message = err instanceof Error ? err.message : "Unknown server error";

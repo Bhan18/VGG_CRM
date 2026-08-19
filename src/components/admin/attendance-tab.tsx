@@ -1,9 +1,9 @@
 "use client";
 
-// Admin attendance — searchable list of all attendance records.
+// Admin attendance — searchable list of all attendance records with check-in/check-out photos.
 
-import { useState } from "react";
-import { CalendarCheck2, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarCheck2, Search, Camera } from "lucide-react";
 import { useAdminFetch } from "@/hooks/admin/use-admin-data";
 import {
   SkeletonList,
@@ -17,6 +17,8 @@ type AdminRecord = {
   attendance_date: string;
   check_in_time: string | null;
   check_out_time: string | null;
+  check_in_photo: string | null;
+  check_out_photo: string | null;
   working_minutes: number | null;
   status: string;
   check_in_reason: string | null;
@@ -136,7 +138,7 @@ export function AttendanceTab() {
               </span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-xs">
+              <table className="w-full min-w-[780px] text-left text-xs">
                 <thead>
                   <tr className="text-[10px] uppercase tracking-wider text-[var(--brand-ink)]/50">
                     <th className="px-4 py-2 font-medium">Employee</th>
@@ -145,6 +147,7 @@ export function AttendanceTab() {
                     <th className="px-2 py-2 font-medium">Check-out</th>
                     <th className="px-2 py-2 font-medium">Hours</th>
                     <th className="px-2 py-2 font-medium">Reason</th>
+                    <th className="px-2 py-2 font-medium">Photos</th>
                     <th className="px-4 py-2 text-right font-medium">Status</th>
                   </tr>
                 </thead>
@@ -165,6 +168,20 @@ export function AttendanceTab() {
                       </td>
                       <td className="max-w-[140px] truncate px-2 py-2.5 text-[var(--brand-ink)]/60">
                         {r.check_in_reason || r.check_out_reason || "—"}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          {r.check_in_photo ? (
+                            <PhotoThumb path={r.check_in_photo} label="In" />
+                          ) : (
+                            <span className="text-[var(--brand-ink)]/30">—</span>
+                          )}
+                          {r.check_out_photo ? (
+                            <PhotoThumb path={r.check_out_photo} label="Out" />
+                          ) : (
+                            <span className="text-[var(--brand-ink)]/30">—</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <StatusPill status={r.status} />
@@ -200,6 +217,59 @@ export function AttendanceTab() {
         </>
       )}
     </div>
+  );
+}
+
+// ─── Photo thumbnail (fetches a fresh signed URL from the path) ─────────────
+
+function PhotoThumb({ path, label }: { path: string; label: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/attendance/photo-url?path=${encodeURIComponent(path)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (active && d.url) setSrc(d.url);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [path]);
+
+  return (
+    <>
+      <button
+        onClick={() => src && setOpen(true)}
+        className="agent-press relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-lg border"
+        style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 15%, #e5e0d4)" }}
+        title={`View ${label} photo`}
+      >
+        {src ? (
+          <img src={src} alt={`${label} photo`} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[var(--brand-emerald)]/5">
+            <Camera className="h-3.5 w-3.5 text-[var(--brand-emerald)]/40" />
+          </div>
+        )}
+        <span className="absolute bottom-0 right-0 rounded-tl bg-black/60 px-1 py-px text-[8px] font-semibold text-white">
+          {label}
+        </span>
+      </button>
+
+      {open && src && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setOpen(false)}
+        >
+          <img
+            src={src}
+            alt={`${label} photo`}
+            className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain shadow-xl"
+          />
+        </div>
+      )}
+    </>
   );
 }
 

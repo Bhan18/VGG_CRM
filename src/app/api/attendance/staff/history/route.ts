@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { listRecords } from "@/lib/attendance/records";
 import { mapRecord } from "@/lib/attendance/mappers";
 import {
@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
  */
 export const GET = withAttendanceErrorHandler(
   async (req: NextRequest) => {
-    const token = req.cookies.get("attendance-staff-session")?.value ?? null;
-    const staff = await getStaffFromSession(token);
+    const employeeId = req.cookies.get("attendance-staff-session")?.value ?? null;
+    const staff = await getStaffFromSession(employeeId);
     if (!staff) return errorResponse("Unauthorized", 401);
 
     const url = new URL(req.url);
@@ -40,7 +40,7 @@ export const GET = withAttendanceErrorHandler(
       .map((r) => mapRecord(r as Parameters<typeof mapRecord>[0]))
       .filter((r) => r !== null);
 
-    return applySessionRefresh(req, json({ items }));
+    return json({ items });
   },
   "staff/history",
 );

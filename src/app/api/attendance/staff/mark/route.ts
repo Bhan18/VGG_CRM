@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { markAttendance } from "@/lib/attendance/records";
 import { json, errorResponse, withAttendanceErrorHandler } from "@/lib/attendance/server-context";
 import { mapRecord } from "@/lib/attendance/mappers";
@@ -7,8 +7,8 @@ import { mapRecord } from "@/lib/attendance/mappers";
 export const dynamic = "force-dynamic";
 
 export const POST = withAttendanceErrorHandler(async (req: NextRequest) => {
-  const token = req.cookies.get("attendance-staff-session")?.value ?? null;
-  const staff = await getStaffFromSession(token);
+  const employeeId = req.cookies.get("attendance-staff-session")?.value ?? null;
+  const staff = await getStaffFromSession(employeeId);
   if (!staff) return errorResponse("Unauthorized", 401);
 
   const body = await req.json().catch(() => null);
@@ -26,9 +26,9 @@ export const POST = withAttendanceErrorHandler(async (req: NextRequest) => {
   if (!result.ok) {
     return errorResponse(result.reason, 400, result.code);
   }
-  return applySessionRefresh(req, json({
+  return json({
     ok: true,
     record: mapRecord(result.record as Parameters<typeof mapRecord>[0]),
     kind: result.kind,
-  }));
+  });
 }, "staff/mark");

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { listResources } from "@/lib/attendance/resources";
 import { json, errorResponse, withAttendanceErrorHandler } from "@/lib/attendance/server-context";
 
@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
  * Filters by their department if visibility = DEPARTMENT.
  */
 export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
-  const token = req.cookies.get("attendance-staff-session")?.value ?? null;
-  const staff = await getStaffFromSession(token);
+  const employeeId = req.cookies.get("attendance-staff-session")?.value ?? null;
+  const staff = await getStaffFromSession(employeeId);
   if (!staff) return errorResponse("Unauthorized", 401);
 
   const items = await listResources({
@@ -32,5 +32,5 @@ export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
     createdAt: r.created_at,
   }));
 
-  return applySessionRefresh(req, json({ items: safe }));
+  return json({ items: safe });
 }, "staff/resources");

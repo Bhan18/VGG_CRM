@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { getTodayRecord } from "@/lib/attendance/records";
 import { getSettings } from "@/lib/attendance/settings";
 import { errorResponse } from "@/lib/attendance/server-context";
@@ -8,16 +8,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.get("attendance-staff-session")?.value ?? null;
-    const staff = await getStaffFromSession(token);
+    const employeeId = req.cookies.get("attendance-staff-session")?.value ?? null;
+    const staff = await getStaffFromSession(employeeId);
     if (!staff) return errorResponse("Unauthorized", 401);
 
     const today = await getTodayRecord(staff.employee.id);
     const settings = await getSettings();
 
-    // Map Supabase snake_case row → camelCase shape expected by the frontend.
-    // The frontend (StaffPortal.tsx) expects: id, employeeCode, name, phone,
-    // department, role, profilePhoto, status.
     const { password_hash, ...rest } = staff.employee;
     const safeEmployee = {
       id: rest.id,
@@ -31,7 +28,6 @@ export async function GET(req: NextRequest) {
       status: rest.status,
     };
 
-    // Map settings to camelCase too
     const camelSettings = {
       id: settings.id,
       officeStartTime: settings.office_start_time,
@@ -50,7 +46,6 @@ export async function GET(req: NextRequest) {
       updatedAt: settings.updated_at,
     };
 
-    // Map today's record to camelCase
     const camelToday = today
       ? {
           id: today.id,
@@ -78,12 +73,12 @@ export async function GET(req: NextRequest) {
         }
       : null;
 
-    return applySessionRefresh(req, NextResponse.json({
+    return NextResponse.json({
       employee: safeEmployee,
       isAdmin: rest.role === "ADMIN" || rest.role === "admin",
       today: camelToday,
       settings: camelSettings,
-    }));
+    });
   } catch (err) {
     console.error("[attendance/staff/session] error:", err);
     const message = err instanceof Error ? err.message : "Unknown server error";
