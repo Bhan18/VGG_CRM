@@ -3,7 +3,7 @@ import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { getEmployeeSalaryHistory, getEmployeeSalaryForMonth } from "@/lib/attendance/salary";
 import { getSalarySettings } from "@/lib/attendance/salary";
 import type { SalaryRecordRow } from "@/lib/attendance/salary";
-import { json, errorResponse, withAttendanceErrorHandler } from "@/lib/attendance/server-context";
+import { jsonNoCache, errorResponse, withAttendanceErrorHandler } from "@/lib/attendance/server-context";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
 
   const history = await getEmployeeSalaryHistory(staff.employee.id);
 
-  return json({
+  return jsonNoCache({
     settings: settings
       ? {
           baseSalary: settings.base_salary,

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { getTodayRecord } from "@/lib/attendance/records";
 import { getSettings } from "@/lib/attendance/settings";
-import { errorResponse } from "@/lib/attendance/server-context";
+import { errorResponse, jsonNoCache } from "@/lib/attendance/server-context";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
         }
       : null;
 
-    return NextResponse.json({
+    return jsonNoCache({
       employee: safeEmployee,
       isAdmin: rest.role === "ADMIN" || rest.role === "admin",
       today: camelToday,
@@ -82,17 +82,9 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("[attendance/staff/session] error:", err);
     const message = err instanceof Error ? err.message : "Unknown server error";
-    return NextResponse.json(
-      {
-        error: "Session load failed due to a server error.",
-        detail: message,
-        hint:
-          message.includes("ATTENDANCE SUPABASE") ||
-          message.includes("env")
-            ? "Set NEXT_PUBLIC_ATTENDANCE_SUPABASE_URL, NEXT_PUBLIC_ATTENDANCE_SUPABASE_ANON_KEY, and ATTENDANCE_SUPABASE_SERVICE_ROLE_KEY in .env.local. See ATTENDANCE.md."
-            : "Check server logs for the full error.",
-      },
-      { status: 500 },
+    return errorResponse(
+      "Session load failed due to a server error.",
+      500,
     );
   }
 }

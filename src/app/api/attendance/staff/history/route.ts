@@ -3,7 +3,7 @@ import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { listRecords } from "@/lib/attendance/records";
 import { mapRecord } from "@/lib/attendance/mappers";
 import {
-  json,
+  jsonNoCache,
   errorResponse,
   withAttendanceErrorHandler,
 } from "@/lib/attendance/server-context";
@@ -40,7 +40,7 @@ export const GET = withAttendanceErrorHandler(
       .map((r) => mapRecord(r as Parameters<typeof mapRecord>[0]))
       .filter((r) => r !== null);
 
-    return json({ items });
+    return jsonNoCache({ items });
   },
   "staff/history",
 );

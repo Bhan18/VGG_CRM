@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/attendance/staff-auth";
 import { listEmployees } from "@/lib/attendance/employees";
 import { getAttendanceAdminClient } from "@/lib/attendance/client";
-import { withAttendanceErrorHandler } from "@/lib/attendance/server-context";
+import { withAttendanceErrorHandler, jsonNoCache } from "@/lib/attendance/server-context";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,7 @@ export const GET = withAttendanceErrorHandler(
       };
     });
 
-    return NextResponse.json({ employees: result, date: dayStr });
+    return jsonNoCache({ employees: result, date: dayStr });
   },
   "admin/employees",
 );

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/attendance/staff-auth";
 import { listRecords } from "@/lib/attendance/records";
-import { withAttendanceErrorHandler } from "@/lib/attendance/server-context";
+import { withAttendanceErrorHandler, jsonNoCache } from "@/lib/attendance/server-context";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export const GET = withAttendanceErrorHandler(
       pageSize: sp.get("pageSize") ? Number(sp.get("pageSize")) : 50,
     });
 
-    return NextResponse.json({
+    return jsonNoCache({
       records: result.items,
       count: result.total,
       page: result.page,

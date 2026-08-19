@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/attendance/staff-auth";
 import { getOverview } from "@/lib/attendance/records";
 import { getAttendanceAdminClient } from "@/lib/attendance/client";
-import { withAttendanceErrorHandler } from "@/lib/attendance/server-context";
+import { withAttendanceErrorHandler, jsonNoCache } from "@/lib/attendance/server-context";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export const GET = withAttendanceErrorHandler(
       };
     });
 
-    return NextResponse.json({ overview, checkedInNow });
+    return jsonNoCache({ overview, checkedInNow });
   },
   "admin/overview",
 );

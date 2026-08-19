@@ -34,6 +34,17 @@ export function json<T>(data: T, init?: ResponseInit) {
   return Response.json(data, init);
 }
 
+/** Response headers that prevent Vercel / CDN / browser caching. */
+const NO_CACHE_HEADERS: HeadersInit = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  "Pragma": "no-cache",
+};
+
+/** Non-cached JSON response — use for all attendance GET routes on Vercel. */
+export function jsonNoCache<T>(data: T, status?: number) {
+  return Response.json(data, { status, headers: NO_CACHE_HEADERS });
+}
+
 export function errorResponse(message: string, status = 400, code?: string) {
   return Response.json(
     code ? { error: message, code } : { error: message },
