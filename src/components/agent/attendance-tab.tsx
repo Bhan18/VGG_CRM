@@ -4,7 +4,7 @@
 // as a clean grouped timeline. Check-in/out go through the app's camera
 // flow (owned by the page) so every action is photo-verified.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useAttendanceLog } from "@/hooks/agent/use-agent-data";
 import { useOnline } from "@/hooks/use-online";
@@ -178,6 +178,15 @@ function TodayCard({
             />
           </div>
         )}
+
+        {checkedIn && today?.checkInPhoto && (
+          <div className="mt-3 flex items-center gap-2">
+            <StaffPhotoThumb path={today.checkInPhoto} label="In" />
+            {today?.checkOutPhoto && (
+              <StaffPhotoThumb path={today.checkOutPhoto} label="Out" />
+            )}
+          </div>
+        )}
       </div>
 
       {today?.checkInDistance != null && checkedIn && (
@@ -245,6 +254,54 @@ function MiniStat({ label, value }: { label: string; value: string }) {
       </div>
       <div className="tnum mt-0.5 text-sm font-semibold">{value}</div>
     </div>
+  );
+}
+
+// ─── Staff photo thumbnail ───────────────────────────────────────────────────
+
+function StaffPhotoThumb({ path, label }: { path: string; label: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/attendance/photo-url?path=${encodeURIComponent(path)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (active && d.url) setSrc(d.url);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [path]);
+
+  if (!src) return null;
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-lg border border-border/60"
+        title={`${label} photo`}
+      >
+        <img src={src} alt={`${label} photo`} className="h-full w-full object-cover" />
+        <span className="absolute bottom-0 right-0 rounded-tl bg-black/60 px-1 py-px text-[8px] font-semibold text-white">
+          {label}
+        </span>
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setOpen(false)}
+        >
+          <img
+            src={src}
+            alt={`${label} photo`}
+            className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain shadow-xl"
+          />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -340,26 +397,36 @@ function HistoryTimeline({ records }: { records: AttendanceLogEntry[] }) {
                       )}
                     />
                     <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{dayLabel}</span>
-                          <span className="text-[11px] text-muted-foreground">{dateLabel}</span>
-                          <StatusPill status={r.status} />
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex gap-1">
+                          {r.checkInPhoto ? (
+                            <StaffPhotoThumb path={r.checkInPhoto} label="In" />
+                          ) : null}
+                          {r.checkOutPhoto ? (
+                            <StaffPhotoThumb path={r.checkOutPhoto} label="Out" />
+                          ) : null}
                         </div>
-                        <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
-                          {r.checkInTime ? (
-                            <span className="tnum">In {formatTime(r.checkInTime)}</span>
-                          ) : (
-                            <span>—</span>
-                          )}
-                          {r.checkOutTime && (
-                            <span className="tnum">Out {formatTime(r.checkOutTime)}</span>
-                          )}
-                          {r.workingMinutes != null && r.workingMinutes > 0 && (
-                            <span className="text-muted-foreground/70">
-                              {formatDuration(r.workingMinutes)}
-                            </span>
-                          )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{dayLabel}</span>
+                            <span className="text-[11px] text-muted-foreground">{dateLabel}</span>
+                            <StatusPill status={r.status} />
+                          </div>
+                          <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
+                            {r.checkInTime ? (
+                              <span className="tnum">In {formatTime(r.checkInTime)}</span>
+                            ) : (
+                              <span>—</span>
+                            )}
+                            {r.checkOutTime && (
+                              <span className="tnum">Out {formatTime(r.checkOutTime)}</span>
+                            )}
+                            {r.workingMinutes != null && r.workingMinutes > 0 && (
+                              <span className="text-muted-foreground/70">
+                                {formatDuration(r.workingMinutes)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

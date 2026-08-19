@@ -76,6 +76,8 @@ export interface AttendanceLogEntry {
   attendanceDate: string;
   checkInTime: string | null;
   checkOutTime: string | null;
+  checkInPhoto: string | null;
+  checkOutPhoto: string | null;
   workingMinutes: number | null;
   status: "PRESENT" | "LATE" | "HALF_DAY" | "ABSENT" | "ON_LEAVE" | "CANCELLED";
 }
