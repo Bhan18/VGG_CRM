@@ -10,8 +10,8 @@ import {
   type AdminContext,
 } from "./client";
 import { logAudit } from "./audit";
-import { computeStatus, getSettings } from "./settings";
-import { isOutsideWindow } from "./window";
+import { computeStatus, getSettings, CHECK_IN_WINDOW_START, CHECK_IN_WINDOW_END } from "./settings";
+import { isOutsideWindow, minutesInZone, hhmmToMinutes } from "./window";
 import {
   verifyAttendanceLocation,
   type LatLng,
@@ -297,6 +297,20 @@ export async function markAttendance(
         ok: false,
         reason: "The reason is not one of the allowed options.",
         code: "INVALID_REASON",
+      };
+    }
+  }
+
+  // Hard check-in window: only allowed between 5:00 AM and 2:30 PM.
+  if (input.kind === "CHECK_IN") {
+    const nowMin = minutesInZone(new Date(), settings.timezone);
+    const windowStart = hhmmToMinutes(CHECK_IN_WINDOW_START);
+    const windowEnd = hhmmToMinutes(CHECK_IN_WINDOW_END);
+    if (nowMin < windowStart || nowMin > windowEnd) {
+      return {
+        ok: false,
+        reason: `Check-in is only allowed between ${CHECK_IN_WINDOW_START} and ${CHECK_IN_WINDOW_END}.`,
+        code: "OUTSIDE_CHECK_IN_WINDOW",
       };
     }
   }

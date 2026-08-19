@@ -22,12 +22,16 @@ const DEFAULTS = {
   checkOutEarlyWindowMinutes: 180,
   reasonOptions: DEFAULT_REASON_OPTIONS,
   lateAfterMinutes: 15,
-  halfDayAfterMinutes: 120,
-  minimumWorkingMinutes: 480,
+  halfDayAfterMinutes: 240,         // 4 hours → half day threshold
+  minimumWorkingMinutes: 450,       // 7.5 hours → full day (30-min grace for 8h)
   requirePhoto: true,
   requireLocation: true,
   timezone: "Asia/Kolkata",
 };
+
+/** Check-in is only allowed between these times (HH:MM, wall-clock). */
+export const CHECK_IN_WINDOW_START = "05:00"; // 5:00 AM
+export const CHECK_IN_WINDOW_END = "14:30";   // 2:30 PM
 
 export type AttendanceSettingsRow = {
   id: string;
@@ -123,6 +127,11 @@ export async function updateSettings(
 
 /**
  * Compute attendance status based on settings + check-in/out times.
+ *
+ * Rules:
+ *   - Full day (PRESENT) if working minutes >= minimumWorkingMinutes (7.5h with 30-min grace)
+ *   - Half day if working minutes >= halfDayAfterMinutes (4h)
+ *   - LATE if check-in is more than lateAfterMinutes after office start
  */
 export async function computeStatus(opts: {
   checkInTime: Date;
@@ -141,14 +150,16 @@ export async function computeStatus(opts: {
   const checkOut = opts.checkOutTime ? new Date(opts.checkOutTime) : null;
   const workedMs = checkOut ? checkOut.getTime() - checkIn.getTime() : 0;
 
-  if (checkIn.getTime() - officeStart.getTime() >= halfDayMs) {
+  const isLate = checkIn.getTime() - officeStart.getTime() > lateMs;
+
+  if (workedMs > 0) {
+    // If checked out: full day when worked >= 7.5h, half day when >= 4h
+    if (workedMs >= minWorkMs) return isLate ? "LATE" : "PRESENT";
+    if (workedMs >= halfDayMs) return "HALF_DAY";
     return "HALF_DAY";
   }
-  if (workedMs > 0 && workedMs < minWorkMs) {
-    return "HALF_DAY";
-  }
-  if (checkIn.getTime() - officeStart.getTime() > lateMs) {
-    return "LATE";
-  }
+
+  // No check-out yet: status based on check-in time only
+  if (isLate) return "LATE";
   return "PRESENT";
 }
