@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStaffFromSession } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import { getTodayRecord } from "@/lib/attendance/records";
 import { getSettings } from "@/lib/attendance/settings";
 import { errorResponse } from "@/lib/attendance/server-context";
@@ -78,12 +78,12 @@ export async function GET(req: NextRequest) {
         }
       : null;
 
-    return NextResponse.json({
+    return applySessionRefresh(req, NextResponse.json({
       employee: safeEmployee,
       isAdmin: rest.role === "ADMIN" || rest.role === "admin",
       today: camelToday,
       settings: camelSettings,
-    });
+    }));
   } catch (err) {
     console.error("[attendance/staff/session] error:", err);
     const message = err instanceof Error ? err.message : "Unknown server error";

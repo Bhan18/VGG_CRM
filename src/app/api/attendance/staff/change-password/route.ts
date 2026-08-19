@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStaffFromSession } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import { getAttendanceAdminClient } from "@/lib/attendance/client";
 import {
   verifyPassword,
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Could not update password. Please try again.", 500);
     }
 
-    return NextResponse.json({ ok: true });
+    return applySessionRefresh(req, NextResponse.json({ ok: true }));
   } catch (err) {
     console.error("[attendance/staff/change-password] error:", err);
     const message = err instanceof Error ? err.message : "Unknown server error";

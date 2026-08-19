@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import { getEmployeeSalaryHistory, getEmployeeSalaryForMonth } from "@/lib/attendance/salary";
 import { getSalarySettings } from "@/lib/attendance/salary";
 import type { SalaryRecordRow } from "@/lib/attendance/salary";
@@ -33,7 +33,7 @@ export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
 
   const history = await getEmployeeSalaryHistory(staff.employee.id);
 
-  return json({
+  return applySessionRefresh(req, json({
     settings: settings
       ? {
           baseSalary: settings.base_salary,
@@ -48,5 +48,5 @@ export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
       : null,
     currentRecord,
     history,
-  });
+  }));
 }, "staff/salary");

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import { listResources } from "@/lib/attendance/resources";
 import { json, errorResponse, withAttendanceErrorHandler } from "@/lib/attendance/server-context";
 
@@ -32,5 +32,5 @@ export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
     createdAt: r.created_at,
   }));
 
-  return json({ items: safe });
+  return applySessionRefresh(req, json({ items: safe }));
 }, "staff/resources");

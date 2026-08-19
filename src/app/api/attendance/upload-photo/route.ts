@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStaffFromSession } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import { saveAttendancePhoto } from "@/lib/attendance/photo";
 import { errorResponse } from "@/lib/attendance/server-context";
 
@@ -22,12 +22,12 @@ export async function POST(req: NextRequest) {
     // Return BOTH:
     //   - path  → stored in DB (permanent identifier, used to regenerate signed URLs)
     //   - url   → signed URL for immediate display (expires after 8h)
-    return NextResponse.json({
+    return applySessionRefresh(req, NextResponse.json({
       url: result.url,
       path: result.path,
       filename: result.path,
       bytes: result.bytes,
-    });
+    }));
   } catch (err) {
     console.error("[attendance/upload-photo] error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";

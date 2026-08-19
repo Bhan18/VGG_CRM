@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminSession } from "@/lib/attendance/staff-auth";
+import { requireAdminSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import {
   listSalarySettings,
   listSalaryRecords,
@@ -19,7 +19,7 @@ export const GET = withAttendanceErrorHandler(
       listSalaryRecords(),
     ]);
 
-    return NextResponse.json({ settings, records });
+    return applySessionRefresh(req, NextResponse.json({ settings, records }));
   },
   "admin/salary",
 );

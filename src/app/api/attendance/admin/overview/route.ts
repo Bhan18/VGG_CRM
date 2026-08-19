@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminSession } from "@/lib/attendance/staff-auth";
+import { requireAdminSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import { getOverview } from "@/lib/attendance/records";
 import { getAttendanceAdminClient } from "@/lib/attendance/client";
 import { withAttendanceErrorHandler } from "@/lib/attendance/server-context";
@@ -50,7 +50,7 @@ export const GET = withAttendanceErrorHandler(
       };
     });
 
-    return NextResponse.json({ overview, checkedInNow });
+    return applySessionRefresh(req, NextResponse.json({ overview, checkedInNow }));
   },
   "admin/overview",
 );

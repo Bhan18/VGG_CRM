@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import { markAttendance } from "@/lib/attendance/records";
 import { json, errorResponse, withAttendanceErrorHandler } from "@/lib/attendance/server-context";
 import { mapRecord } from "@/lib/attendance/mappers";
@@ -26,9 +26,9 @@ export const POST = withAttendanceErrorHandler(async (req: NextRequest) => {
   if (!result.ok) {
     return errorResponse(result.reason, 400, result.code);
   }
-  return json({
+  return applySessionRefresh(req, json({
     ok: true,
     record: mapRecord(result.record as Parameters<typeof mapRecord>[0]),
     kind: result.kind,
-  });
+  }));
 }, "staff/mark");

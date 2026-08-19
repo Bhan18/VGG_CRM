@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession, applySessionRefresh } from "@/lib/attendance/staff-auth";
 import { listRecords } from "@/lib/attendance/records";
 import { mapRecord } from "@/lib/attendance/mappers";
 import {
@@ -40,7 +40,7 @@ export const GET = withAttendanceErrorHandler(
       .map((r) => mapRecord(r as Parameters<typeof mapRecord>[0]))
       .filter((r) => r !== null);
 
-    return json({ items });
+    return applySessionRefresh(req, json({ items }));
   },
   "staff/history",
 );

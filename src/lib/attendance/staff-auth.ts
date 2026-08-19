@@ -25,6 +25,7 @@ const SESSION_SECRET =
   // Sandbox-only fallback. NEVER rely on this in production.
   "attendance-staff-session-secret-CHANGE-ME";
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+const SESSION_REFRESH_RATIO = 0.5; // refresh when 50% of TTL has elapsed
 
 export type StaffSession = {
   employeeId: string;
@@ -71,6 +72,46 @@ export function verifySession(
   } catch {
     return null;
   }
+}
+
+/**
+ * If the current token is valid but past the refresh threshold, re-sign
+ * it with a fresh expiry and return the new token string. Returns null
+ * when no refresh is needed (either still fresh or already expired).
+ */
+export function refreshSessionToken(token: string): string | null {
+  const [body, sig] = token.split(".");
+  if (!body || !sig) return null;
+
+  const expected = createHmac("sha256", SESSION_SECRET)
+    .update(body)
+    .digest("base64url");
+  if (sig.length !== expected.length || sig !== expected) return null;
+
+  let payload: StaffSession;
+  try {
+    payload = JSON.parse(
+      Buffer.from(body, "base64url").toString("utf8"),
+    ) as StaffSession;
+  } catch {
+    return null;
+  }
+
+  // Already expired — caller will get 401 from verifySession; no point refreshing.
+  const now = Date.now();
+  if (now > payload.expiresAt) return null;
+
+  const elapsed = now - payload.issuedAt;
+  const threshold = SESSION_TTL_MS * SESSION_REFRESH_RATIO;
+  if (elapsed < threshold) return null; // still fresh — don't touch it
+
+  // Sliding window: re-issue from now with a full TTL.
+  return signSession({
+    employeeId: payload.employeeId,
+    employeeCode: payload.employeeCode,
+    name: payload.name,
+    role: payload.role,
+  });
 }
 
 export async function loginStaff(opts: {
@@ -165,4 +206,26 @@ export async function requireAdminSession(req: {
     };
   }
   return { authorized: true, employee: staff.employee };
+}
+
+/**
+ * Middleware-style helper: reads the current session cookie, refreshes it
+ * if needed, and sets the updated cookie on the outgoing response.
+ * Always returns the response (unchanged or with the Set-Cookie header).
+ */
+export function applySessionRefresh(
+  req: { cookies: { get(name: string): { value?: string } | undefined } },
+  res: NextResponse,
+): NextResponse {
+  const token = req.cookies.get("attendance-staff-session")?.value ?? null;
+  if (!token) return res;
+
+  const newToken = refreshSessionToken(token);
+  if (!newToken) return res;
+
+  res.headers.append(
+    "Set-Cookie",
+    `attendance-staff-session=${newToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.round(SESSION_TTL_MS / 1000)}`,
+  );
+  return res;
 }
