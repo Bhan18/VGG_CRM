@@ -227,7 +227,6 @@ export default function AgentPage() {
       {showMpinPrompt && (
         <SetMpinPrompt
           onClose={() => setShowMpinPrompt(false)}
-          employeeId={session.employee.id}
         />
       )}
     </div>

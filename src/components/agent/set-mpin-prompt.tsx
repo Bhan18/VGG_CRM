@@ -8,11 +8,10 @@ import { KeyRound, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface SetMpinPromptProps {
-  employeeId: string;
   onClose: () => void;
 }
 
-export function SetMpinPrompt({ employeeId, onClose }: SetMpinPromptProps) {
+export function SetMpinPrompt({ onClose }: SetMpinPromptProps) {
   const [mpin, setMpin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,10 +31,10 @@ export function SetMpinPrompt({ employeeId, onClose }: SetMpinPromptProps) {
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/attendance/admin/set-mpin", {
+      const res = await fetch("/api/attendance/staff/set-mpin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId, mpin }),
+        body: JSON.stringify({ mpin }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
