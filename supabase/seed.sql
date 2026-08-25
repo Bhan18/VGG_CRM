@@ -37,11 +37,9 @@ values
   ('e0000001-0000-0000-0000-000000000008', 'EMP008', 'Ananya Das',      '9876543217', 'HR',           'Recruiter',     'ACTIVE', 'demo')
 on conflict (employee_code) do nothing;
 
--- ⚠️ NOTE: The password_hash above is 'demo' (placeholder).
--- After running this seed, use the admin dashboard to reset each
--- employee's password to <code>123 (e.g. EMP001 → EMP001123):
---   Dashboard → Staff Attendance → Employees → [employee] → Reset Password
--- Or run the Node seed script: bun run scripts/seed-attendance-supabase.ts
+-- ⚠️ NOTE: password_hash above is 'demo' (placeholder).
+-- Login is now via 4-digit MPIN (set by admin in the dashboard).
+-- After seeding, run the ALTER TABLE and UPDATE below to add MPIN support.
 
 -- ---- Today's attendance (sample) --------------------------------------
 -- Creates check-in records for today for 7 of the 8 employees.

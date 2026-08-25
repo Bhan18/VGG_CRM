@@ -24,6 +24,7 @@ create table if not exists attendance_employees (
   role            text not null default 'Staff',
   profile_photo   text,
   password_hash   text,
+  mpin_hash       text,
   status          text not null default 'ACTIVE' check (status in ('ACTIVE', 'INACTIVE')),
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()

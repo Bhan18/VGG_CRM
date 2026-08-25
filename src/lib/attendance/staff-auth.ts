@@ -4,15 +4,15 @@
  * Auth is cookie-based: the login route sets an HttpOnly cookie containing
  * the employee ID. Subsequent requests read this cookie and look up the
  * employee from the database. No HMAC signing, no session tokens, no TTL.
+ *
+ * Login uses a 4-digit MPIN (bcrypt-hashed) instead of a password.
  */
 
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { getAttendanceAdminClient } from "./client";
 import {
   getEmployeeByCode,
-  verifyPassword,
-  hashPassword,
-  isBcryptHash,
   type AttendanceEmployeeRow,
 } from "./employees";
 
@@ -22,9 +22,24 @@ export function isAdminRole(role: string | null | undefined): boolean {
   return role === "ADMIN" || role === "admin";
 }
 
-export async function loginStaff(opts: {
+// ---- MPIN helpers --------------------------------------------------------
+
+const MPIN_ROUNDS = 10;
+
+export function hashMpin(mpin: string): string {
+  return bcrypt.hashSync(mpin, MPIN_ROUNDS);
+}
+
+export function verifyMpin(plain: string, hash: string | null): boolean {
+  if (!hash) return false;
+  return bcrypt.compareSync(plain, hash);
+}
+
+// ---- Login ---------------------------------------------------------------
+
+export async function loginWithMpin(opts: {
   employeeCode: string;
-  password: string;
+  mpin: string;
 }): Promise<
   | {
       ok: true;
@@ -38,23 +53,61 @@ export async function loginStaff(opts: {
   if (employee.status !== "ACTIVE") {
     return { ok: false, reason: "Employee is inactive — contact admin" };
   }
-  if (!verifyPassword(opts.password, employee.password_hash)) {
-    return { ok: false, reason: "Invalid credentials" };
+  if (!verifyMpin(opts.mpin, (employee as any).mpin_hash)) {
+    return { ok: false, reason: "Invalid MPIN" };
   }
-  // Upgrade legacy SHA-256 hashes to bcrypt on successful login.
-  if (employee.password_hash && !isBcryptHash(employee.password_hash)) {
-    const supabase = getAttendanceAdminClient();
-    await supabase
-      .from("attendance_employees")
-      .update({
-        password_hash: hashPassword(opts.password),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", employee.id);
-  }
-  const { password_hash, ...safeEmployee } = employee;
+  const { password_hash, mpin_hash, ...safeEmployee } = employee as any;
   return { ok: true, employeeId: employee.id, employee: safeEmployee };
 }
+
+// ---- MPIN management (admin) --------------------------------------------
+
+export async function setMpin(employeeId: string, mpin: string) {
+  const supabase = getAttendanceAdminClient();
+  const { error } = await supabase
+    .from("attendance_employees")
+    .update({ mpin_hash: hashMpin(mpin), updated_at: new Date().toISOString() })
+    .eq("id", employeeId);
+  if (error) throw new Error(error.message);
+}
+
+export async function removeMpin(employeeId: string) {
+  const supabase = getAttendanceAdminClient();
+  const { error } = await supabase
+    .from("attendance_employees")
+    .update({ mpin_hash: null, updated_at: new Date().toISOString() })
+    .eq("id", employeeId);
+  if (error) throw new Error(error.message);
+}
+
+// ---- MPIN change (self-service) ------------------------------------------
+
+export async function changeMpin(
+  employeeId: string,
+  oldMpin: string,
+  newMpin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const supabase = getAttendanceAdminClient();
+  const { data: employee, error: fetchErr } = await supabase
+    .from("attendance_employees")
+    .select("mpin_hash")
+    .eq("id", employeeId)
+    .single();
+  if (fetchErr || !employee) return { ok: false, reason: "Employee not found" };
+
+  if (!verifyMpin(oldMpin, (employee as any).mpin_hash)) {
+    return { ok: false, reason: "Current MPIN is incorrect" };
+  }
+
+  const { error: updateErr } = await supabase
+    .from("attendance_employees")
+    .update({ mpin_hash: hashMpin(newMpin), updated_at: new Date().toISOString() })
+    .eq("id", employeeId);
+  if (updateErr) throw new Error(updateErr.message);
+  return { ok: true };
+}
+
+// ---- Session helpers -----------------------------------------------------
 
 /**
  * Look up an employee by their ID (stored in the session cookie).

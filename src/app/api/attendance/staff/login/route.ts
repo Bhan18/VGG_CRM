@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loginStaff, setSessionCookie } from "@/lib/attendance/staff-auth";
+import { loginWithMpin, setSessionCookie } from "@/lib/attendance/staff-auth";
 import { errorResponse } from "@/lib/attendance/server-context";
 import { mapEmployee } from "@/lib/attendance/mappers";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * POST /api/attendance/staff/login
+ * Body: { employeeCode: string, mpin: string }
+ *
+ * Authenticates an employee using their 4-digit MPIN.
+ * Sets an httpOnly cookie with the employee UUID on success.
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    if (!body?.employeeCode || !body?.password) {
-      return errorResponse("employeeCode and password required", 400);
+    if (!body?.employeeCode || !body?.mpin) {
+      return errorResponse("employeeCode and mpin required", 400);
     }
-    const res = await loginStaff({
+    const res = await loginWithMpin({
       employeeCode: body.employeeCode,
-      password: body.password,
+      mpin: body.mpin,
     });
     if (!res.ok) return errorResponse(res.reason, 401);
 
@@ -24,17 +31,6 @@ export async function POST(req: NextRequest) {
     return setSessionCookie(response, res.employeeId);
   } catch (err) {
     console.error("[attendance/staff/login] error:", err);
-    const message = err instanceof Error ? err.message : "Unknown server error";
-    return NextResponse.json(
-      {
-        error: "Login failed due to a server error.",
-        detail: message,
-        hint:
-          message.includes("ATTENDANCE SUPABASE") || message.includes("env")
-            ? "Set NEXT_PUBLIC_ATTENDANCE_SUPABASE_URL, NEXT_PUBLIC_ATTENDANCE_SUPABASE_ANON_KEY, and ATTENDANCE_SUPABASE_SERVICE_ROLE_KEY in .env.local. See ATTENDANCE.md."
-            : "Check server logs for the full error.",
-      },
-      { status: 500 },
-    );
+    return errorResponse("Login failed due to a server error.", 500);
   }
 }

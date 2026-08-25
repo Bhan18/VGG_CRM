@@ -20,6 +20,7 @@ export const GET = withAttendanceErrorHandler(
       today.getMonth() + 1,
     ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
+    // Fetch today's attendance + mpin_hash status for all employees
     const { data: todays, error } = await supabase
       .from("attendance_records")
       .select(
@@ -27,6 +28,15 @@ export const GET = withAttendanceErrorHandler(
       )
       .eq("attendance_date", dayStr);
     if (error) throw new Error(error.message);
+
+    const { data: mpinRows } = await supabase
+      .from("attendance_employees")
+      .select("id, mpin_hash");
+
+    const mpinMap = new Map<string, boolean>();
+    for (const r of mpinRows ?? []) {
+      mpinMap.set(r.id, !!(r as any).mpin_hash);
+    }
 
     const byEmployee = new Map<
       string,
@@ -51,6 +61,7 @@ export const GET = withAttendanceErrorHandler(
         department: e.department,
         role: e.role,
         status: e.status,
+        hasMpin: mpinMap.get(e.id) ?? false,
         today: todayRecord,
       };
     });

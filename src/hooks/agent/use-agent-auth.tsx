@@ -1,6 +1,6 @@
 "use client";
 
-// Agent auth provider — employee code + password against the attendance
+// Agent auth provider — employee code + MPIN against the attendance
 // Supabase project. The server issues an httpOnly cookie
 // (attendance-staff-session); the client never stores a token. Session
 // validity is re-checked against /api/attendance/staff/session on boot.
@@ -22,7 +22,7 @@ interface AgentAuthContextValue {
   loading: boolean;
   signIn: (
     employeeCode: string,
-    password: string,
+    mpin: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -67,15 +67,15 @@ export function AgentAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(
-    async (employeeCode: string, password: string) => {
-      if (!employeeCode.trim() || !password) {
-        return { ok: false, error: "Enter your employee code and password." };
+    async (employeeCode: string, mpin: string) => {
+      if (!employeeCode.trim() || !mpin) {
+        return { ok: false, error: "Enter your employee code and MPIN." };
       }
       try {
         const res = await fetch("/api/attendance/staff/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ employeeCode, password }),
+          body: JSON.stringify({ employeeCode, mpin }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {

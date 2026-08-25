@@ -1,10 +1,9 @@
 "use client";
 
-// Admin Settings tab — change the signed-in admin's password.
-// Reuses the staff change-password route (works for any session).
+// Admin Settings tab — change the signed-in admin's MPIN.
 
 import { useState } from "react";
-import { KeyRound, Eye, EyeOff, Loader2, Shield, Check } from "lucide-react";
+import { KeyRound, Loader2, Shield, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 
@@ -13,7 +12,6 @@ export function SettingsTab() {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,38 +22,38 @@ export function SettingsTab() {
     if (busy) return;
     setError(null);
     if (!current || !next) {
-      setError("Enter your current and new password.");
+      setError("Enter your current and new MPIN.");
       return;
     }
-    if (next.length < 4) {
-      setError("New password must be at least 4 characters.");
+    if (!/^\d{4}$/.test(next)) {
+      setError("New MPIN must be exactly 4 digits.");
       return;
     }
     if (next === current) {
-      setError("New password must be different from the current password.");
+      setError("New MPIN must be different from the current MPIN.");
       return;
     }
     if (next !== confirm) {
-      setError("New passwords do not match.");
+      setError("New MPINs do not match.");
       return;
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/attendance/staff/change-password", {
+      const res = await fetch("/api/attendance/staff/change-mpin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+        body: JSON.stringify({ oldMpin: current, newMpin: next }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error ?? "Could not change password.");
+        setError(data?.error ?? "Could not change MPIN.");
         return;
       }
       setCurrent("");
       setNext("");
       setConfirm("");
-      toast.success("Password changed", {
-        description: "Use your new password next time you sign in.",
+      toast.success("MPIN changed", {
+        description: "Use your new MPIN next time you sign in.",
       });
     } catch {
       setError("Network error. Please try again.");
@@ -80,7 +78,7 @@ export function SettingsTab() {
           <div>
             <div className="text-sm font-semibold">{p?.name ?? "Admin"}</div>
             <div className="text-xs text-[var(--brand-ink)]/55">
-              {p?.employeeCode ?? ""} · {p?.role ?? ""}
+              {p?.employeeCode ?? ""} / {p?.role ?? ""}
             </div>
           </div>
         </div>
@@ -89,74 +87,62 @@ export function SettingsTab() {
       <div className="agent-card mt-3 p-5">
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4" style={{ color: "var(--brand-emerald)" }} />
-          <div className="text-sm font-semibold">Change password</div>
+          <div className="text-sm font-semibold">Change MPIN</div>
         </div>
         <p className="mt-1 text-xs text-[var(--brand-ink)]/55">
-          You'll use the new password next time you sign in.
+          You will use the new MPIN next time you sign in.
         </p>
 
         <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="admin-pwd-current" className="text-xs font-medium text-[var(--brand-ink)]/70">
-              Current password
+            <label htmlFor="admin-mpin-current" className="text-xs font-medium text-[var(--brand-ink)]/70">
+              Current MPIN
             </label>
-            <div className="relative">
-              <input
-                id="admin-pwd-current"
-                type={show ? "text" : "password"}
-                autoComplete="current-password"
-                value={current}
-                onChange={(e) => setCurrent(e.target.value)}
-                disabled={busy}
-                className={inputClass}
-                placeholder="••••••••"
-              />
-            </div>
+            <input
+              id="admin-mpin-current"
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={current}
+              onChange={(e) => setCurrent(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              disabled={busy}
+              className={inputClass}
+              placeholder="----"
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="admin-pwd-new" className="text-xs font-medium text-[var(--brand-ink)]/70">
-              New password
+            <label htmlFor="admin-mpin-new" className="text-xs font-medium text-[var(--brand-ink)]/70">
+              New MPIN
             </label>
-            <div className="relative">
-              <input
-                id="admin-pwd-new"
-                type={show ? "text" : "password"}
-                autoComplete="new-password"
-                value={next}
-                onChange={(e) => setNext(e.target.value)}
-                disabled={busy}
-                className={`${inputClass} pr-10`}
-                placeholder="At least 4 characters"
-              />
-              <button
-                type="button"
-                onClick={() => setShow((v) => !v)}
-                tabIndex={-1}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--brand-ink)]/45"
-                aria-label={show ? "Hide password" : "Show password"}
-              >
-                {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+            <input
+              id="admin-mpin-new"
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={next}
+              onChange={(e) => setNext(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              disabled={busy}
+              className={inputClass}
+              placeholder="4 digits"
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="admin-pwd-confirm" className="text-xs font-medium text-[var(--brand-ink)]/70">
-              Confirm new password
+            <label htmlFor="admin-mpin-confirm" className="text-xs font-medium text-[var(--brand-ink)]/70">
+              Confirm new MPIN
             </label>
-            <div className="relative">
-              <input
-                id="admin-pwd-confirm"
-                type={show ? "text" : "password"}
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                disabled={busy}
-                className={inputClass}
-                placeholder="Repeat new password"
-              />
-            </div>
+            <input
+              id="admin-mpin-confirm"
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              disabled={busy}
+              className={inputClass}
+              placeholder="Re-enter new MPIN"
+            />
           </div>
 
           {error && (
@@ -176,7 +162,7 @@ export function SettingsTab() {
             ) : (
               <Check className="h-4 w-4" />
             )}
-            {busy ? "Saving…" : "Update password"}
+            {busy ? "Saving..." : "Update MPIN"}
           </button>
         </form>
       </div>
