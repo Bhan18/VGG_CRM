@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loginWithMpin, loginStaff, setSessionCookie } from "@/lib/attendance/staff-auth";
+import { loginStaff, loginWithMpin, setSessionCookie } from "@/lib/attendance/staff-auth";
 import { errorResponse } from "@/lib/attendance/server-context";
 import { mapEmployee } from "@/lib/attendance/mappers";
 
@@ -7,10 +7,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * POST /api/attendance/staff/login
- * Body: { employeeCode: string, password?: string, mpin?: string }
+ * Body: { employeeCode, password? , mpin? }
  *
- * Authenticates an employee using either password or 4-digit MPIN.
- * Sets an httpOnly cookie with the employee UUID on success.
+ * Accepts either password or MPIN. MPIN is the quick-login shortcut.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -22,13 +21,11 @@ export async function POST(req: NextRequest) {
     let result: Awaited<ReturnType<typeof loginStaff>>;
 
     if (body.mpin) {
-      // MPIN login
       result = await loginWithMpin({
         employeeCode: body.employeeCode,
         mpin: body.mpin,
       });
     } else if (body.password) {
-      // Password login
       result = await loginStaff({
         employeeCode: body.employeeCode,
         password: body.password,

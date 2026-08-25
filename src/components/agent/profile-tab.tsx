@@ -2,7 +2,6 @@
 
 // Profile tab — READ-ONLY. All fields come from the attendance module
 // (attendance_employees), managed by the admin dashboard.
-// Includes a Change MPIN section (employee self-service).
 
 import { useState } from "react";
 import {
@@ -12,11 +11,14 @@ import {
   Building2,
   Briefcase,
   Shield,
-  Lock,
   LogOut,
+  CalendarClock,
+  Lock,
+  Eye,
+  EyeOff,
+  KeyRound,
   Loader2,
   ChevronDown,
-  KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
@@ -94,8 +96,8 @@ export function ProfileTab() {
         />
       </div>
 
-      {/* Change MPIN */}
-      <ChangeMpinCard />
+      {/* Change password */}
+      <ChangePasswordCard />
 
       {/* Note: read-only reminder */}
       <div
@@ -131,11 +133,12 @@ export function ProfileTab() {
   );
 }
 
-function ChangeMpinCard() {
+function ChangePasswordCard() {
   const [open, setOpen] = useState(false);
-  const [oldMpin, setOldMpin] = useState("");
-  const [newMpin, setNewMpin] = useState("");
-  const [confirmMpin, setConfirmMpin] = useState("");
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,39 +146,35 @@ function ChangeMpinCard() {
     e.preventDefault();
     if (busy) return;
     setError(null);
-    if (!oldMpin || !newMpin) {
-      setError("Enter your current and new MPIN.");
+    if (!current || !next) {
+      setError("Enter your current and new password.");
       return;
     }
-    if (!/^\d{4}$/.test(newMpin)) {
-      setError("New MPIN must be exactly 4 digits.");
+    if (next.length < 4) {
+      setError("New password must be at least 4 characters.");
       return;
     }
-    if (newMpin === oldMpin) {
-      setError("New MPIN must be different from the current MPIN.");
-      return;
-    }
-    if (newMpin !== confirmMpin) {
-      setError("New MPINs do not match.");
+    if (next !== confirm) {
+      setError("New passwords do not match.");
       return;
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/attendance/staff/change-mpin", {
+      const res = await fetch("/api/attendance/staff/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oldMpin, newMpin }),
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error ?? "Could not change MPIN.");
+        setError(data?.error ?? "Could not change password.");
         return;
       }
-      setOldMpin("");
-      setNewMpin("");
-      setConfirmMpin("");
-      toast.success("MPIN changed", {
-        description: "Use your new MPIN next time you sign in.",
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      toast.success("Password changed", {
+        description: "Use your new password next time you sign in.",
       });
     } catch {
       setError("Network error. Please try again.");
@@ -208,7 +207,7 @@ function ChangeMpinCard() {
           aria-expanded={open}
         >
           <KeyRound className="h-4 w-4" style={{ color: "var(--brand-emerald)" }} />
-          <div className="flex-1 text-sm font-semibold">Change MPIN</div>
+          <div className="flex-1 text-sm font-semibold">Change password</div>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
             style={{ color: "var(--brand-ink)" }}
@@ -219,61 +218,64 @@ function ChangeMpinCard() {
           <form onSubmit={onSubmit} className="flex flex-col gap-3 p-4">
             <div className="flex flex-col gap-1.5">
               <label
-                htmlFor="mpin-current"
+                htmlFor="pwd-current"
                 className="text-xs font-medium text-[var(--brand-ink)]/70"
               >
-                Current MPIN
+                Current password
+              </label>
+              <div className="relative">
+                <input
+                  id="pwd-current"
+                  name="currentPassword"
+                  type={show ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={current}
+                  onChange={(e) => setCurrent(e.target.value)}
+                  disabled={busy}
+                  className={inputClass}
+                  placeholder="Enter current password"
+                />
+                <EyeToggle show={show} onToggle={() => setShow((v) => !v)} />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="pwd-new"
+                className="text-xs font-medium text-[var(--brand-ink)]/70"
+              >
+                New password
               </label>
               <input
-                id="mpin-current"
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={oldMpin}
-                onChange={(e) => setOldMpin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                id="pwd-new"
+                name="newPassword"
+                type={show ? "text" : "password"}
+                autoComplete="new-password"
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
                 disabled={busy}
                 className={inputClass}
-                placeholder="----"
+                placeholder="At least 4 characters"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label
-                htmlFor="mpin-new"
+                htmlFor="pwd-confirm"
                 className="text-xs font-medium text-[var(--brand-ink)]/70"
               >
-                New MPIN
+                Confirm new password
               </label>
               <input
-                id="mpin-new"
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={newMpin}
-                onChange={(e) => setNewMpin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                id="pwd-confirm"
+                name="confirmPassword"
+                type={show ? "text" : "password"}
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
                 disabled={busy}
                 className={inputClass}
-                placeholder="4 digits"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="mpin-confirm"
-                className="text-xs font-medium text-[var(--brand-ink)]/70"
-              >
-                Confirm new MPIN
-              </label>
-              <input
-                id="mpin-confirm"
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={confirmMpin}
-                onChange={(e) => setConfirmMpin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                disabled={busy}
-                className={inputClass}
-                placeholder="Re-enter new MPIN"
+                placeholder="Re-enter new password"
               />
             </div>
 
@@ -301,12 +303,31 @@ function ChangeMpinCard() {
               }}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-              {busy ? "Saving..." : "Update MPIN"}
+              {busy ? "Saving..." : "Update password"}
             </button>
           </form>
         )}
       </div>
     </div>
+  );
+}
+
+function EyeToggle({
+  show,
+  onToggle,
+}: {
+  show: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--brand-ink)]/50"
+      aria-label={show ? "Hide password" : "Show password"}
+    >
+      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+    </button>
   );
 }
 
@@ -337,19 +358,6 @@ function Field({
         <div className="truncate text-sm font-medium">{value}</div>
       </div>
     </div>
-  );
-}
-
-function CalendarClock(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" />
-      <path d="M16 2v4" />
-      <path d="M8 2v4" />
-      <path d="M3 10h5" />
-      <path d="M17.5 17.5 16 16.3V14" />
-      <circle cx="16" cy="16" r="6" />
-    </svg>
   );
 }
 

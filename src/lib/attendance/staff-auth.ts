@@ -5,7 +5,8 @@
  * the employee ID. Subsequent requests read this cookie and look up the
  * employee from the database. No HMAC signing, no session tokens, no TTL.
  *
- * Login supports both password and 4-digit MPIN (bcrypt-hashed).
+ * MPIN is an optional 4-digit quick-login PIN. When set, employees can
+ * use it instead of their password to re-open the app after logout.
  */
 
 import { NextResponse } from "next/server";
@@ -25,43 +26,7 @@ export function isAdminRole(role: string | null | undefined): boolean {
   return role === "ADMIN" || role === "admin";
 }
 
-// ---- MPIN helpers --------------------------------------------------------
-
-const MPIN_ROUNDS = 10;
-
-export function hashMpin(mpin: string): string {
-  return bcrypt.hashSync(mpin, MPIN_ROUNDS);
-}
-
-export function verifyMpin(plain: string, hash: string | null): boolean {
-  if (!hash) return false;
-  return bcrypt.compareSync(plain, hash);
-}
-
-// ---- Login ---------------------------------------------------------------
-
-export async function loginWithMpin(opts: {
-  employeeCode: string;
-  mpin: string;
-}): Promise<
-  | {
-      ok: true;
-      employeeId: string;
-      employee: unknown;
-    }
-  | { ok: false; reason: string }
-> {
-  const employee = await getEmployeeByCode(opts.employeeCode.trim());
-  if (!employee) return { ok: false, reason: "Employee not found" };
-  if (employee.status !== "ACTIVE") {
-    return { ok: false, reason: "Employee is inactive — contact admin" };
-  }
-  if (!verifyMpin(opts.mpin, (employee as any).mpin_hash)) {
-    return { ok: false, reason: "Invalid MPIN" };
-  }
-  const { password_hash, mpin_hash, ...safeEmployee } = employee as any;
-  return { ok: true, employeeId: employee.id, employee: safeEmployee };
-}
+// ---- Password login (unchanged) ------------------------------------------
 
 export async function loginStaff(opts: {
   employeeCode: string;
@@ -97,8 +62,31 @@ export async function loginStaff(opts: {
   return { ok: true, employeeId: employee.id, employee: safeEmployee };
 }
 
-// ---- MPIN management (admin) --------------------------------------------
+// ---- MPIN helpers --------------------------------------------------------
 
+const MPIN_ROUNDS = 10;
+
+export function hashMpin(mpin: string): string {
+  return bcrypt.hashSync(mpin, MPIN_ROUNDS);
+}
+
+export function verifyMpin(plain: string, hash: string | null): boolean {
+  if (!hash) return false;
+  return bcrypt.compareSync(plain, hash);
+}
+
+/** Check if an employee has an MPIN set (without exposing the hash). */
+export async function hasMpin(employeeId: string): Promise<boolean> {
+  const supabase = getAttendanceAdminClient();
+  const { data } = await supabase
+    .from("attendance_employees")
+    .select("mpin_hash")
+    .eq("id", employeeId)
+    .single();
+  return !!(data as any)?.mpin_hash;
+}
+
+/** Set or update an employee's MPIN (admin or self-service). */
 export async function setMpin(employeeId: string, mpin: string) {
   const supabase = getAttendanceAdminClient();
   const { error } = await supabase
@@ -108,6 +96,7 @@ export async function setMpin(employeeId: string, mpin: string) {
   if (error) throw new Error(error.message);
 }
 
+/** Remove an employee's MPIN. */
 export async function removeMpin(employeeId: string) {
   const supabase = getAttendanceAdminClient();
   const { error } = await supabase
@@ -117,8 +106,27 @@ export async function removeMpin(employeeId: string) {
   if (error) throw new Error(error.message);
 }
 
-// ---- MPIN change (self-service) ------------------------------------------
+/** Login with MPIN (quick-login). */
+export async function loginWithMpin(opts: {
+  employeeCode: string;
+  mpin: string;
+}): Promise<
+  | { ok: true; employeeId: string; employee: unknown }
+  | { ok: false; reason: string }
+> {
+  const employee = await getEmployeeByCode(opts.employeeCode.trim());
+  if (!employee) return { ok: false, reason: "Employee not found" };
+  if (employee.status !== "ACTIVE") {
+    return { ok: false, reason: "Employee is inactive — contact admin" };
+  }
+  if (!verifyMpin(opts.mpin, (employee as any).mpin_hash)) {
+    return { ok: false, reason: "Invalid MPIN" };
+  }
+  const { password_hash, mpin_hash, ...safeEmployee } = employee as any;
+  return { ok: true, employeeId: employee.id, employee: safeEmployee };
+}
 
+/** Change MPIN (self-service — verifies old MPIN first). */
 export async function changeMpin(
   employeeId: string,
   oldMpin: string,
@@ -144,7 +152,7 @@ export async function changeMpin(
   return { ok: true };
 }
 
-// ---- Session helpers -----------------------------------------------------
+// ---- Session helpers (unchanged) -----------------------------------------
 
 /**
  * Look up an employee by their ID (stored in the session cookie).
@@ -167,9 +175,7 @@ export async function getStaffFromSession(
 }
 
 /**
- * Server-side guard for admin-only API routes. Reads the employee ID
- * from the session cookie, resolves the employee, and returns either
- * the staff record or a JSON error response (401 / 403).
+ * Server-side guard for admin-only API routes.
  */
 export async function requireAdminSession(req: {
   cookies: { get(name: string): { value?: string } | undefined };

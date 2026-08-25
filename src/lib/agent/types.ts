@@ -66,6 +66,7 @@ export interface AgentSettings {
 export interface AgentSession {
   employee: AgentProfile;
   isAdmin?: boolean;
+  hasMpin?: boolean;
   today: AgentTodayRecord | null;
   settings: AgentSettings;
 }

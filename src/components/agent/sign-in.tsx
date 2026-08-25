@@ -1,6 +1,8 @@
 "use client";
 
-// Sign-in screen — employee code + password or 4-digit MPIN (toggle between modes).
+// Sign-in screen — employee code + password.
+// If employee has an MPIN set, shows MPIN input by default with
+// a "Use password instead" fallback link.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
@@ -10,36 +12,50 @@ import { BrandLogo } from "./brand-logo";
 
 const MPIN_LENGTH = 4;
 
-type LoginMode = "password" | "mpin";
-
 export function AgentSignIn() {
   const { signIn } = useAgentAuth();
   const { branding } = useBranding();
-  const [mode, setMode] = useState<LoginMode>("password");
   const [employeeCode, setEmployeeCode] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [mpin, setMpin] = useState<string[]>(Array(MPIN_LENGTH).fill(""));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // MPIN state
+  const [mpinAvailable, setMpinAvailable] = useState<boolean | null>(null); // null = unknown
+  const [useMpin, setUseMpin] = useState(false);
+  const [mpin, setMpin] = useState<string[]>(Array(MPIN_LENGTH).fill(""));
   const mpinRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // When employee code changes, check if MPIN is set (debounced)
+  useEffect(() => {
+    if (!employeeCode.trim()) {
+      setMpinAvailable(null);
+      setUseMpin(false);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/attendance/staff/check-mpin?code=${encodeURIComponent(employeeCode.trim())}`);
+        const data = await res.json().catch(() => ({ hasMpin: false }));
+        setMpinAvailable(data.hasMpin);
+        setUseMpin(data.hasMpin);
+        setMpin(Array(MPIN_LENGTH).fill(""));
+        setError(null);
+      } catch {
+        setMpinAvailable(false);
+        setUseMpin(false);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [employeeCode]);
 
   // Focus first MPIN box when switching to MPIN mode
   useEffect(() => {
-    if (mode === "mpin") {
+    if (useMpin) {
       mpinRefs.current[0]?.focus();
     }
-  }, [mode]);
-
-  const switchMode = (newMode: LoginMode) => {
-    setMode(newMode);
-    setError(null);
-    if (newMode === "mpin") {
-      setMpin(Array(MPIN_LENGTH).fill(""));
-    } else {
-      setPassword("");
-    }
-  };
+  }, [useMpin]);
 
   // --- MPIN handlers ---
 
@@ -51,11 +67,9 @@ export function AgentSignIn() {
       next[index] = digit;
       setMpin(next);
       setError(null);
-
       if (digit && index < MPIN_LENGTH - 1) {
         mpinRefs.current[index + 1]?.focus();
       }
-
       if (digit && index === MPIN_LENGTH - 1) {
         const fullMpin = next.join("");
         if (fullMpin.length === MPIN_LENGTH && employeeCode.trim()) {
@@ -157,8 +171,11 @@ export function AgentSignIn() {
         </div>
       </div>
 
-      <div className="flex-1 -mt-6 rounded-t-3xl bg-[var(--brand-paper)] px-6 pt-8 pb-8 flex flex-col gap-5">
-        {/* Employee code — always shown */}
+      <form
+        onSubmit={useMpin ? onSubmitPassword : onSubmitPassword}
+        className="flex-1 -mt-6 rounded-t-3xl bg-[var(--brand-paper)] px-6 pt-8 pb-8 flex flex-col gap-5"
+      >
+        {/* Employee code */}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="agent-employee-code" className="text-xs font-medium text-[var(--brand-ink)]/70">
             Employee code
@@ -182,154 +199,119 @@ export function AgentSignIn() {
           </div>
         </div>
 
-        {/* Mode toggle */}
-        <div className="flex rounded-xl border border-[color-mix(in_srgb,var(--brand-emerald)_15%,#e5e0d4)] bg-white overflow-hidden">
-          <button
-            type="button"
-            onClick={() => switchMode("password")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-medium transition-colors ${
-              mode === "password"
-                ? "bg-[var(--brand-emerald)] text-white"
-                : "text-[var(--brand-ink)]/60 hover:bg-gray-50"
-            }`}
-          >
-            <Lock className="h-3.5 w-3.5" />
-            Password
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode("mpin")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-medium transition-colors ${
-              mode === "mpin"
-                ? "bg-[var(--brand-emerald)] text-white"
-                : "text-[var(--brand-ink)]/60 hover:bg-gray-50"
-            }`}
-          >
-            <KeyRound className="h-3.5 w-3.5" />
-            MPIN
-          </button>
-        </div>
-
-        {/* Password form */}
-        {mode === "password" && (
-          <form onSubmit={onSubmitPassword} className="flex flex-col gap-5">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="agent-password" className="text-xs font-medium text-[var(--brand-ink)]/70">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--brand-ink)]/40" />
+        {/* MPIN input (shown when MPIN is available and user chose MPIN mode) */}
+        {useMpin && mpinAvailable && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-[var(--brand-ink)]/70">
+              MPIN
+            </label>
+            <div className="flex items-center justify-center gap-3">
+              {mpin.map((digit, i) => (
                 <input
-                  id="agent-password"
-                  name="password"
-                  type={showPw ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  key={i}
+                  ref={(el) => { mpinRefs.current[i] = el; }}
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleMpinChange(i, e.target.value)}
+                  onKeyDown={(e) => handleMpinKeyDown(i, e)}
+                  onPaste={i === 0 ? handleMpinPaste : undefined}
                   disabled={busy}
-                  className="w-full rounded-xl border border-[color-mix(in_srgb,var(--brand-emerald)_15%,#e5e0d4)] bg-white pl-10 pr-10 py-3 text-sm outline-none focus:border-[var(--brand-emerald)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-emerald)_20%,transparent)]"
-                  placeholder="Enter password"
+                  className="h-14 w-14 rounded-xl border border-[color-mix(in_srgb,var(--brand-emerald)_15%,#e5e0d4)] bg-white text-center text-xl font-semibold outline-none focus:border-[var(--brand-emerald)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-emerald)_20%,transparent)] disabled:opacity-60"
+                  aria-label={`MPIN digit ${i + 1}`}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--brand-ink)]/50"
-                  aria-label={showPw ? "Hide password" : "Show password"}
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              ))}
             </div>
-
-            {error && (
-              <div
-                className="rounded-xl px-4 py-3 text-sm"
-                style={{
-                  background: "color-mix(in srgb, var(--brand-checkout) 10%, white)",
-                  color: "var(--brand-checkout)",
-                  border: "1px solid color-mix(in srgb, var(--brand-checkout) 22%, transparent)",
-                }}
-                role="alert"
-              >
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="agent-press mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white disabled:opacity-60"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-emerald-soft) 100%)",
-                boxShadow:
-                  "0 10px 24px -8px color-mix(in srgb, var(--brand-emerald) 60%, transparent)",
-              }}
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {busy ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
+          </div>
         )}
 
-        {/* MPIN form */}
-        {mode === "mpin" && (
-          <form onSubmit={onSubmitMpin} className="flex flex-col gap-5">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--brand-ink)]/70">
-                MPIN
-              </label>
-              <div className="flex items-center justify-center gap-3">
-                {mpin.map((digit, i) => (
-                  <input
-                    key={i}
-                    ref={(el) => { mpinRefs.current[i] = el; }}
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleMpinChange(i, e.target.value)}
-                    onKeyDown={(e) => handleMpinKeyDown(i, e)}
-                    onPaste={i === 0 ? handleMpinPaste : undefined}
-                    disabled={busy}
-                    className="h-14 w-14 rounded-xl border border-[color-mix(in_srgb,var(--brand-emerald)_15%,#e5e0d4)] bg-white text-center text-xl font-semibold outline-none focus:border-[var(--brand-emerald)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-emerald)_20%,transparent)] disabled:opacity-60"
-                    aria-label={`MPIN digit ${i + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {error && (
-              <div
-                className="rounded-xl px-4 py-3 text-sm"
-                style={{
-                  background: "color-mix(in srgb, var(--brand-checkout) 10%, white)",
-                  color: "var(--brand-checkout)",
-                  border: "1px solid color-mix(in srgb, var(--brand-checkout) 22%, transparent)",
-                }}
-                role="alert"
+        {/* Password input (shown when no MPIN or user chose password mode) */}
+        {(!useMpin || !mpinAvailable) && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="agent-password" className="text-xs font-medium text-[var(--brand-ink)]/70">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--brand-ink)]/40" />
+              <input
+                id="agent-password"
+                name="password"
+                type={showPw ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={busy}
+                className="w-full rounded-xl border border-[color-mix(in_srgb,var(--brand-emerald)_15%,#e5e0d4)] bg-white pl-10 pr-10 py-3 text-sm outline-none focus:border-[var(--brand-emerald)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-emerald)_20%,transparent)]"
+                placeholder="Enter password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--brand-ink)]/50"
+                aria-label={showPw ? "Hide password" : "Show password"}
               >
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="agent-press mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white disabled:opacity-60"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-emerald-soft) 100%)",
-                boxShadow:
-                  "0 10px 24px -8px color-mix(in srgb, var(--brand-emerald) 60%, transparent)",
-              }}
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {busy ? "Signing in..." : "Sign in with MPIN"}
-            </button>
-          </form>
+                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
         )}
-      </div>
+
+        {error && (
+          <div
+            className="rounded-xl px-4 py-3 text-sm"
+            style={{
+              background: "color-mix(in srgb, var(--brand-checkout) 10%, white)",
+              color: "var(--brand-checkout)",
+              border: "1px solid color-mix(in srgb, var(--brand-checkout) 22%, transparent)",
+            }}
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="agent-press mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white disabled:opacity-60"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-emerald-soft) 100%)",
+            boxShadow:
+              "0 10px 24px -8px color-mix(in srgb, var(--brand-emerald) 60%, transparent)",
+          }}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {busy ? "Signing in..." : useMpin ? "Sign in with MPIN" : "Sign in"}
+        </button>
+
+        {/* Toggle between MPIN and password */}
+        {mpinAvailable !== null && employeeCode.trim() && (
+          <button
+            type="button"
+            onClick={() => {
+              setUseMpin((v) => !v);
+              setError(null);
+              setMpin(Array(MPIN_LENGTH).fill(""));
+              setPassword("");
+            }}
+            className="flex items-center justify-center gap-1.5 text-xs font-medium text-[var(--brand-emerald)] hover:underline"
+          >
+            {useMpin ? (
+              <>
+                <Lock className="h-3 w-3" />
+                Use password instead
+              </>
+            ) : (
+              <>
+                <KeyRound className="h-3 w-3" />
+                Use MPIN instead
+              </>
+            )}
+          </button>
+        )}
+      </form>
     </div>
   );
 }

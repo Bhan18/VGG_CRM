@@ -1,7 +1,7 @@
 "use client";
 
-// Agent auth provider — employee code + MPIN against the attendance
-// Supabase project. The server issues an httpOnly cookie
+// Agent auth provider — employee code + password (or MPIN) against the
+// attendance Supabase project. The server issues an httpOnly cookie
 // (attendance-staff-session); the client never stores a token. Session
 // validity is re-checked against /api/attendance/staff/session on boot.
 
@@ -22,7 +22,7 @@ interface AgentAuthContextValue {
   loading: boolean;
   signIn: (
     employeeCode: string,
-    mpin: string,
+    password: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -67,15 +67,21 @@ export function AgentAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(
-    async (employeeCode: string, mpin: string) => {
-      if (!employeeCode.trim() || !mpin) {
-        return { ok: false, error: "Enter your employee code and MPIN." };
+    async (employeeCode: string, passwordOrMpin: string) => {
+      if (!employeeCode.trim() || !passwordOrMpin) {
+        return { ok: false, error: "Enter your employee code and password." };
       }
       try {
+        // Detect MPIN (exactly 4 digits) vs password
+        const isMpin = /^\d{4}$/.test(passwordOrMpin);
+        const body = isMpin
+          ? { employeeCode, mpin: passwordOrMpin }
+          : { employeeCode, password: passwordOrMpin };
+
         const res = await fetch("/api/attendance/staff/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ employeeCode, mpin }),
+          body: JSON.stringify(body),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
