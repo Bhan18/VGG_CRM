@@ -13,6 +13,7 @@ import {
   Briefcase,
   Shield,
   Lock,
+  LogOut,
   Loader2,
   ChevronDown,
   KeyRound,
@@ -21,7 +22,7 @@ import { toast } from "sonner";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 
 export function ProfileTab() {
-  const { session } = useAgentAuth();
+  const { signOut, session } = useAgentAuth();
   const p = session?.employee;
 
   if (!p) {
@@ -112,6 +113,20 @@ export function ProfileTab() {
           If any detail looks incorrect, please contact your administrator to update it.
         </div>
       </div>
+
+      {/* Sign out */}
+      <button
+        onClick={() => void signOut()}
+        className="agent-press mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-medium"
+        style={{
+          background: "color-mix(in srgb, var(--brand-checkout) 8%, white)",
+          color: "var(--brand-checkout)",
+          border: "1px solid color-mix(in srgb, var(--brand-checkout) 20%, transparent)",
+        }}
+      >
+        <LogOut className="h-4 w-4" />
+        Sign out
+      </button>
     </div>
   );
 }

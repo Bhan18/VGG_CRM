@@ -5,7 +5,7 @@
  * the employee ID. Subsequent requests read this cookie and look up the
  * employee from the database. No HMAC signing, no session tokens, no TTL.
  *
- * Login uses a 4-digit MPIN (bcrypt-hashed) instead of a password.
+ * Login supports both password and 4-digit MPIN (bcrypt-hashed).
  */
 
 import { NextResponse } from "next/server";
@@ -13,6 +13,9 @@ import bcrypt from "bcryptjs";
 import { getAttendanceAdminClient } from "./client";
 import {
   getEmployeeByCode,
+  verifyPassword,
+  hashPassword,
+  isBcryptHash,
   type AttendanceEmployeeRow,
 } from "./employees";
 
@@ -55,6 +58,40 @@ export async function loginWithMpin(opts: {
   }
   if (!verifyMpin(opts.mpin, (employee as any).mpin_hash)) {
     return { ok: false, reason: "Invalid MPIN" };
+  }
+  const { password_hash, mpin_hash, ...safeEmployee } = employee as any;
+  return { ok: true, employeeId: employee.id, employee: safeEmployee };
+}
+
+export async function loginStaff(opts: {
+  employeeCode: string;
+  password: string;
+}): Promise<
+  | {
+      ok: true;
+      employeeId: string;
+      employee: unknown;
+    }
+  | { ok: false; reason: string }
+> {
+  const employee = await getEmployeeByCode(opts.employeeCode.trim());
+  if (!employee) return { ok: false, reason: "Employee not found" };
+  if (employee.status !== "ACTIVE") {
+    return { ok: false, reason: "Employee is inactive — contact admin" };
+  }
+  if (!verifyPassword(opts.password, employee.password_hash)) {
+    return { ok: false, reason: "Invalid credentials" };
+  }
+  // Upgrade legacy SHA-256 hashes to bcrypt on successful login.
+  if (employee.password_hash && !isBcryptHash(employee.password_hash)) {
+    const supabase = getAttendanceAdminClient();
+    await supabase
+      .from("attendance_employees")
+      .update({
+        password_hash: hashPassword(opts.password),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", employee.id);
   }
   const { password_hash, mpin_hash, ...safeEmployee } = employee as any;
   return { ok: true, employeeId: employee.id, employee: safeEmployee };
