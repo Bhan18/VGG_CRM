@@ -2,7 +2,7 @@
 // Supabase project (via /api/attendance/staff/*). Content + branding come
 // from the main Supabase project.
 
-export type AgentTab = "home" | "content" | "profile" | "attendance";
+export type AgentTab = "home" | "content" | "profile" | "attendance" | "leaves";
 export type AgentContentTab = "posts" | "brochures" | "videos";
 
 // Employee row from attendance_employees, mapped to camelCase

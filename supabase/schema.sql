@@ -217,6 +217,30 @@ create index if not exists idx_resources_category on attendance_company_resource
 create index if not exists idx_resources_status on attendance_company_resources (status);
 
 -- =====================================================================
+-- 1.8 LEAVE REQUESTS
+-- =====================================================================
+-- Staff submit leave requests. Admin approves/rejects.
+
+create table if not exists attendance_leave_requests (
+  id            uuid primary key default gen_random_uuid(),
+  employee_id   uuid not null references attendance_employees(id) on delete cascade,
+  leave_type    text not null check (leave_type in ('CASUAL', 'SICK', 'EARNED', 'UNPAID')),
+  start_date    date not null,
+  end_date      date not null,
+  reason        text not null,
+  status        text not null default 'PENDING'
+    check (status in ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED')),
+  admin_remark  text,
+  approved_by   text,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  check (end_date >= start_date)
+);
+create index if not exists idx_leave_requests_emp on attendance_leave_requests (employee_id);
+create index if not exists idx_leave_requests_status on attendance_leave_requests (status);
+create index if not exists idx_leave_requests_dates on attendance_leave_requests (start_date, end_date);
+
+-- =====================================================================
 -- 2. ROW LEVEL SECURITY
 -- =====================================================================
 -- Enable RLS on all tables. The service-role key bypasses RLS (server-
@@ -230,6 +254,7 @@ alter table attendance_audit_logs       enable row level security;
 alter table attendance_salary_settings  enable row level security;
 alter table attendance_salary_records   enable row level security;
 alter table attendance_company_resources enable row level security;
+alter table attendance_leave_requests   enable row level security;
 
 -- Settings + locations are readable by anyone (public anon key).
 -- Writes go through the server (service-role key).
@@ -272,6 +297,10 @@ create policy "public read salary records"
 drop policy if exists "public read active resources" on attendance_company_resources;
 create policy "public read active resources"
   on attendance_company_resources for select using (status = 'ACTIVE');
+
+drop policy if exists "public read leave requests" on attendance_leave_requests;
+create policy "public read leave requests"
+  on attendance_leave_requests for select using (true);
 
 -- =====================================================================
 -- 3. STORAGE BUCKETS
