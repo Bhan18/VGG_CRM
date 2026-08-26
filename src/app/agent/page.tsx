@@ -17,7 +17,6 @@ import { HomeTab } from "@/components/agent/home-tab";
 import { ContentTab } from "@/components/agent/content-tab";
 import { AttendanceTab } from "@/components/agent/attendance-tab";
 import { ProfileTab } from "@/components/agent/profile-tab";
-import { LeaveTab } from "@/components/agent/leave-tab";
 import { CameraCapture } from "@/components/agent/camera-capture";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import { SetMpinPrompt } from "@/components/agent/set-mpin-prompt";
@@ -203,7 +202,6 @@ export default function AgentPage() {
           />
         )}
         {tab === "content" && <ContentTab />}
-        {tab === "leaves" && <LeaveTab />}
         {tab === "attendance" && (
           <AttendanceTab
             onCheckIn={() => startCapture("CHECK_IN")}

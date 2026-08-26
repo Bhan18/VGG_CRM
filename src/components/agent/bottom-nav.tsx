@@ -2,7 +2,7 @@
 
 // Bottom navigation — 4 tabs. Sticky, safe-area aware, hidden keyboard.
 
-import { Home, FileText, Clock3, User, CalendarOff } from "lucide-react";
+import { Home, FileText, Clock3, User } from "lucide-react";
 import { useAgentNav } from "@/hooks/agent/use-agent-nav";
 import type { AgentTab } from "@/lib/agent/types";
 
@@ -10,7 +10,6 @@ const TABS: { id: AgentTab; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "attendance", label: "Attendance", icon: Clock3 },
   { id: "content", label: "Content", icon: FileText },
-  { id: "leaves", label: "Leaves", icon: CalendarOff },
   { id: "profile", label: "Profile", icon: User },
 ];
 
@@ -22,7 +21,7 @@ export function BottomNav() {
       style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 12%, #e5e0d4)" }}
       aria-label="Primary"
     >
-      <div className="mx-auto grid max-w-2xl grid-cols-5">
+      <div className="mx-auto grid max-w-2xl grid-cols-4">
         {TABS.map(({ id, label, icon: Icon }) => {
           const active = tab === id;
           return (
