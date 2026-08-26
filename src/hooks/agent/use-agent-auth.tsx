@@ -106,6 +106,7 @@ export function AgentAuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    try { localStorage.removeItem("attendance-last-employee-code"); } catch { /* ignore */ }
     setSession(null);
     router.replace("/agent");
   }, [router]);
