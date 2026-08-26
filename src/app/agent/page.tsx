@@ -19,7 +19,6 @@ import { AttendanceTab } from "@/components/agent/attendance-tab";
 import { ProfileTab } from "@/components/agent/profile-tab";
 import { CameraCapture } from "@/components/agent/camera-capture";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
-import { SetMpinPrompt } from "@/components/agent/set-mpin-prompt";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useAgentNav } from "@/hooks/agent/use-agent-nav";
 import { useSubmitAttendance, type AttendanceSubmitResult } from "@/hooks/agent/use-agent-data";
@@ -160,15 +159,6 @@ export default function AgentPage() {
     [capture, submit, refreshSession, setTab]
   );
 
-  // MPIN setup prompt — shown after password login if no MPIN is set.
-  const [showMpinPrompt, setShowMpinPrompt] = useState(false);
-
-  useEffect(() => {
-    if (session && !session.isAdmin && (session as any).hasMpin === false) {
-      setShowMpinPrompt(true);
-    }
-  }, [session]);
-
   // Boot sequence — splash first (cold open only; refresh skips it).
   if (splash !== "gone") {
     return <AgentSplash leaving={splash === "leaving"} />;
@@ -224,11 +214,6 @@ export default function AgentPage() {
         />
       )}
 
-      {showMpinPrompt && (
-        <SetMpinPrompt
-          onClose={() => setShowMpinPrompt(false)}
-        />
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-// Agent auth provider — employee code + password (or MPIN) against the
+// Agent auth provider — employee code + password against the
 // attendance Supabase project. The server issues an httpOnly cookie
 // (attendance-staff-session); the client never stores a token. Session
 // validity is re-checked against /api/attendance/staff/session on boot.
@@ -51,7 +51,6 @@ export function AgentAuthProvider({ children }: { children: ReactNode }) {
     return undefined;
   }, []);
 
-  // Validate the staff cookie on first mount.
   useEffect(() => {
     let active = true;
     (async () => {
@@ -67,21 +66,15 @@ export function AgentAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(
-    async (employeeCode: string, passwordOrMpin: string) => {
-      if (!employeeCode.trim() || !passwordOrMpin) {
+    async (employeeCode: string, password: string) => {
+      if (!employeeCode.trim() || !password) {
         return { ok: false, error: "Enter your employee code and password." };
       }
       try {
-        // Detect MPIN (exactly 4 digits) vs password
-        const isMpin = /^\d{4}$/.test(passwordOrMpin);
-        const body = isMpin
-          ? { employeeCode, mpin: passwordOrMpin }
-          : { employeeCode, password: passwordOrMpin };
-
         const res = await fetch("/api/attendance/staff/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ employeeCode, password }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -106,7 +99,6 @@ export function AgentAuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
-    try { localStorage.removeItem("attendance-last-employee-code"); } catch { /* ignore */ }
     setSession(null);
     router.replace("/agent");
   }, [router]);

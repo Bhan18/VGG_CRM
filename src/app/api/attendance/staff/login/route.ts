@@ -1,38 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loginStaff, loginWithMpin, setSessionCookie } from "@/lib/attendance/staff-auth";
+import { loginStaff, setSessionCookie } from "@/lib/attendance/staff-auth";
 import { errorResponse } from "@/lib/attendance/server-context";
 import { mapEmployee } from "@/lib/attendance/mappers";
 
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/attendance/staff/login
- * Body: { employeeCode, password? , mpin? }
- *
- * Accepts either password or MPIN. MPIN is the quick-login shortcut.
- */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    if (!body?.employeeCode) {
-      return errorResponse("employeeCode required", 400);
+    if (!body?.employeeCode || !body?.password) {
+      return errorResponse("employeeCode and password required", 400);
     }
 
-    let result: Awaited<ReturnType<typeof loginStaff>>;
-
-    if (body.mpin) {
-      result = await loginWithMpin({
-        employeeCode: body.employeeCode,
-        mpin: body.mpin,
-      });
-    } else if (body.password) {
-      result = await loginStaff({
-        employeeCode: body.employeeCode,
-        password: body.password,
-      });
-    } else {
-      return errorResponse("password or mpin required", 400);
-    }
+    const result = await loginStaff({
+      employeeCode: body.employeeCode,
+      password: body.password,
+    });
 
     if (!result.ok) return errorResponse(result.reason, 401);
 

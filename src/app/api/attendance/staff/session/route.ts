@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getStaffFromSession, hasMpin } from "@/lib/attendance/staff-auth";
+import { getStaffFromSession } from "@/lib/attendance/staff-auth";
 import { getTodayRecord } from "@/lib/attendance/records";
 import { getSettings } from "@/lib/attendance/settings";
 import { errorResponse, jsonNoCache } from "@/lib/attendance/server-context";
@@ -14,7 +14,6 @@ export async function GET(req: NextRequest) {
 
     const today = await getTodayRecord(staff.employee.id);
     const settings = await getSettings();
-    const employeeHasMpin = await hasMpin(staff.employee.id);
 
     const { password_hash, mpin_hash, ...rest } = staff.employee as any;
     const safeEmployee = {
@@ -77,7 +76,6 @@ export async function GET(req: NextRequest) {
     return jsonNoCache({
       employee: safeEmployee,
       isAdmin: rest.role === "ADMIN" || rest.role === "admin",
-      hasMpin: employeeHasMpin,
       today: camelToday,
       settings: camelSettings,
     });

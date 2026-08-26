@@ -6,7 +6,6 @@ import { withAttendanceErrorHandler, jsonNoCache } from "@/lib/attendance/server
 
 export const dynamic = "force-dynamic";
 
-// Employee list with today's attendance status — used for tracking staff.
 export const GET = withAttendanceErrorHandler(
   async (req: NextRequest) => {
     const guard = await requireAdminSession(req);
@@ -20,7 +19,6 @@ export const GET = withAttendanceErrorHandler(
       today.getMonth() + 1,
     ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-    // Fetch today's attendance + mpin_hash status for all employees
     const { data: todays, error } = await supabase
       .from("attendance_records")
       .select(
@@ -28,15 +26,6 @@ export const GET = withAttendanceErrorHandler(
       )
       .eq("attendance_date", dayStr);
     if (error) throw new Error(error.message);
-
-    const { data: mpinRows } = await supabase
-      .from("attendance_employees")
-      .select("id, mpin_hash");
-
-    const mpinMap = new Map<string, boolean>();
-    for (const r of mpinRows ?? []) {
-      mpinMap.set(r.id, !!(r as any).mpin_hash);
-    }
 
     const byEmployee = new Map<
       string,
@@ -51,20 +40,16 @@ export const GET = withAttendanceErrorHandler(
       });
     }
 
-    const result = employees.map((e) => {
-      const todayRecord = byEmployee.get(e.id) ?? null;
-      return {
-        id: e.id,
-        employeeCode: e.employee_code,
-        name: e.name,
-        phone: e.phone,
-        department: e.department,
-        role: e.role,
-        status: e.status,
-        hasMpin: mpinMap.get(e.id) ?? false,
-        today: todayRecord,
-      };
-    });
+    const result = employees.map((e) => ({
+      id: e.id,
+      employeeCode: e.employee_code,
+      name: e.name,
+      phone: e.phone,
+      department: e.department,
+      role: e.role,
+      status: e.status,
+      today: byEmployee.get(e.id) ?? null,
+    }));
 
     return jsonNoCache({ employees: result, date: dayStr });
   },
