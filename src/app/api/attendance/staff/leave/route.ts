@@ -65,8 +65,8 @@ export const POST = withAttendanceErrorHandler(async (req: NextRequest) => {
     .single();
 
   if (error) {
-    console.error("[staff/leave] insert error:", error.message);
-    return errorResponse("Could not submit leave request", 500);
+    console.error("[staff/leave] insert error:", error.message, error.details, error.hint);
+    return errorResponse(`Could not submit leave request: ${error.message}`, 500);
   }
 
   return jsonNoCache({ item: data }, 201);
