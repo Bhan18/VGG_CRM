@@ -7,6 +7,7 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   CalendarCheck2,
+  CalendarOff,
   Banknote,
   Users,
   LogOut,
@@ -20,13 +21,15 @@ import { OverviewTab } from "./overview-tab";
 import { AttendanceTab } from "./attendance-tab";
 import { SalaryTab } from "./salary-tab";
 import { EmployeesTab } from "./employees-tab";
+import { LeavesTab } from "./leaves-tab";
 import { SettingsTab } from "./settings-tab";
 
-type AdminTab = "overview" | "attendance" | "salary" | "employees" | "settings";
+type AdminTab = "overview" | "attendance" | "leaves" | "salary" | "employees" | "settings";
 
 const TABS: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "attendance", label: "Attendance", icon: CalendarCheck2 },
+  { id: "leaves", label: "Leaves", icon: CalendarOff },
   { id: "salary", label: "Salary", icon: Banknote },
   { id: "employees", label: "Employees", icon: Users },
   { id: "settings", label: "Settings", icon: Settings },
@@ -113,6 +116,7 @@ export function AdminDashboard() {
       <main className="agent-frame flex-1 px-4 pb-8 pt-4">
         {tab === "overview" && <OverviewTab />}
         {tab === "attendance" && <AttendanceTab />}
+        {tab === "leaves" && <LeavesTab />}
         {tab === "salary" && <SalaryTab />}
         {tab === "employees" && <EmployeesTab />}
         {tab === "settings" && <SettingsTab />}
