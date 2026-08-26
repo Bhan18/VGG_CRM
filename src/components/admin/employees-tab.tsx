@@ -231,15 +231,39 @@ function SetMpinDialog({
     }
   }
 
+  async function onRemove() {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/attendance/admin/set-mpin", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId: employee.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data?.error ?? "Could not remove MPIN.");
+        return;
+      }
+      toast.success("MPIN removed", {
+        description: `${employee.name} will need to use password to log in.`,
+      });
+      onDone();
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <KeyRound className="h-4 w-4" style={{ color: "var(--brand-emerald)" }} />
-            <div className="text-sm font-semibold">
-              {employee.hasMpin ? "Reset MPIN" : "Set MPIN"}
-            </div>
+            <div className="text-sm font-semibold">Manage MPIN</div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1 hover:bg-gray-100">
             <X className="h-4 w-4" />
@@ -248,11 +272,16 @@ function SetMpinDialog({
         <div className="mt-1 text-xs text-[var(--brand-ink)]/55">
           {employee.name} ({employee.employeeCode})
         </div>
+        {employee.hasMpin && (
+          <div className="mt-2 rounded-lg px-2.5 py-1.5 text-[11px] font-medium" style={{ background: "color-mix(in srgb, var(--brand-emerald) 8%, white)", color: "var(--brand-emerald)" }}>
+            MPIN is currently set
+          </div>
+        )}
 
         <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-[var(--brand-ink)]/70">
-              4-digit MPIN
+              {employee.hasMpin ? "New 4-digit MPIN" : "Set 4-digit MPIN"}
             </label>
             <input
               type="password"
@@ -280,8 +309,25 @@ function SetMpinDialog({
             style={{ background: "var(--brand-emerald)" }}
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-            {busy ? "Saving..." : employee.hasMpin ? "Reset MPIN" : "Set MPIN"}
+            {busy ? "Saving..." : employee.hasMpin ? "Update MPIN" : "Set MPIN"}
           </button>
+
+          {employee.hasMpin && (
+            <button
+              type="button"
+              onClick={() => void onRemove()}
+              disabled={busy}
+              className="agent-press flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
+              style={{
+                background: "color-mix(in srgb, var(--brand-checkout) 8%, white)",
+                color: "var(--brand-checkout)",
+                border: "1px solid color-mix(in srgb, var(--brand-checkout) 20%, transparent)",
+              }}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+              Remove MPIN
+            </button>
+          )}
         </form>
       </div>
     </div>
