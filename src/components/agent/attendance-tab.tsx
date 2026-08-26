@@ -4,7 +4,7 @@
 // as a clean grouped timeline. Check-in/out go through the app's camera
 // flow (owned by the page) so every action is photo-verified.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useAttendanceLog } from "@/hooks/agent/use-agent-data";
 import { useOnline } from "@/hooks/use-online";
