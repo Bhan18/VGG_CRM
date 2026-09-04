@@ -104,15 +104,26 @@ function PostsList() {
                 }) : "—"}
               </span>
               {p.attachment_url && (
-                <a
-                  href={p.attachment_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 font-medium"
-                  style={{ color: "var(--brand-emerald)" }}
-                >
-                  <ExternalLink className="h-3 w-3" /> Open
-                </a>
+                <span className="flex items-center gap-2">
+                  <a
+                    href={p.attachment_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium"
+                    style={{ color: "var(--brand-emerald)" }}
+                  >
+                    <ExternalLink className="h-3 w-3" /> Open
+                  </a>
+                  <a
+                    href={p.attachment_url}
+                    download
+                    className="agent-press inline-flex items-center gap-1 font-medium"
+                    style={{ color: "var(--brand-emerald)" }}
+                    aria-label={`Download ${p.title}`}
+                  >
+                    <Download className="h-3 w-3" /> Download
+                  </a>
+                </span>
               )}
             </div>
           </div>
