@@ -2,7 +2,7 @@
 // Supabase project (via /api/attendance/staff/*). Content + branding come
 // from the main Supabase project.
 
-export type AgentTab = "home" | "content" | "profile" | "attendance";
+export type AgentTab = "home" | "content" | "profile" | "attendance" | "leads";
 export type AgentContentTab = "posts" | "brochures" | "videos";
 
 // Employee row from attendance_employees, mapped to camelCase
@@ -110,6 +110,32 @@ export interface ContentVideo {
   video_url: string | null;
   duration_seconds: number | null;
   published_at: string | null;
+}
+
+export type LeadStatus = "NEW" | "CONTACTED" | "FOLLOW_UP" | "WON" | "LOST";
+export type LeadActivityType = "NOTE" | "CALL" | "MEETING" | "FOLLOW_UP" | "REMARK";
+
+export interface Lead {
+  id: string;
+  employee_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  company: string | null;
+  source: string | null;
+  status: LeadStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadActivity {
+  id: string;
+  lead_id: string;
+  employee_id: string;
+  type: LeadActivityType;
+  content: string;
+  created_at: string;
 }
 
 export interface GeoReading {

@@ -241,6 +241,41 @@ create index if not exists idx_leave_requests_status on attendance_leave_request
 create index if not exists idx_leave_requests_dates on attendance_leave_requests (start_date, end_date);
 
 -- =====================================================================
+-- 1.9 STAFF CRM (personal leads space)
+-- =====================================================================
+-- Each staff member tracks their own leads + follow-up activity.
+-- Leads belong to one employee; only that employee (or admin) sees them.
+
+create table if not exists attendance_leads (
+  id           uuid primary key default gen_random_uuid(),
+  employee_id  uuid not null references attendance_employees(id) on delete cascade,
+  name         text not null,
+  phone        text,
+  email        text,
+  company      text,
+  source       text,
+  status       text not null default 'NEW'
+    check (status in ('NEW', 'CONTACTED', 'FOLLOW_UP', 'WON', 'LOST')),
+  notes        text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists idx_leads_emp on attendance_leads (employee_id);
+create index if not exists idx_leads_status on attendance_leads (status);
+
+create table if not exists attendance_lead_activities (
+  id          uuid primary key default gen_random_uuid(),
+  lead_id     uuid not null references attendance_leads(id) on delete cascade,
+  employee_id uuid not null references attendance_employees(id) on delete cascade,
+  type        text not null default 'NOTE'
+    check (type in ('NOTE', 'CALL', 'MEETING', 'FOLLOW_UP', 'REMARK')),
+  content     text not null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_lead_activities_lead on attendance_lead_activities (lead_id);
+create index if not exists idx_lead_activities_created on attendance_lead_activities (created_at);
+
+-- =====================================================================
 -- 2. ROW LEVEL SECURITY
 -- =====================================================================
 -- Enable RLS on all tables. The service-role key bypasses RLS (server-
@@ -255,6 +290,8 @@ alter table attendance_salary_settings  enable row level security;
 alter table attendance_salary_records   enable row level security;
 alter table attendance_company_resources enable row level security;
 alter table attendance_leave_requests   enable row level security;
+alter table attendance_leads            enable row level security;
+alter table attendance_lead_activities  enable row level security;
 
 -- Settings + locations are readable by anyone (public anon key).
 -- Writes go through the server (service-role key).
@@ -301,6 +338,14 @@ create policy "public read active resources"
 drop policy if exists "public read leave requests" on attendance_leave_requests;
 create policy "public read leave requests"
   on attendance_leave_requests for select using (true);
+
+drop policy if exists "public read leads" on attendance_leads;
+create policy "public read leads"
+  on attendance_leads for select using (true);
+
+drop policy if exists "public read lead activities" on attendance_lead_activities;
+create policy "public read lead activities"
+  on attendance_lead_activities for select using (true);
 
 -- =====================================================================
 -- 3. STORAGE BUCKETS

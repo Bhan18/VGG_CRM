@@ -10,6 +10,10 @@ import type {
   ContentBrochure,
   ContentPost,
   ContentVideo,
+  Lead,
+  LeadActivity,
+  LeadActivityType,
+  LeadStatus,
 } from "@/lib/agent/types";
 
 async function jsonOrThrow(res: Response) {
@@ -113,6 +117,101 @@ export interface AttendanceSubmitResult {
   ok: boolean;
   error?: string;
   code?: string;
+}
+
+export function useLeads() {
+  return useQuery<Lead[]>({
+    queryKey: ["agent", "leads"],
+    queryFn: async () => {
+      const res = await fetch("/api/attendance/staff/leads", { credentials: "include" });
+      const data = await jsonOrThrow(res);
+      return Array.isArray(data?.items) ? data.items : [];
+    },
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export function useLeadDetail(id: string | null) {
+  return useQuery<{ lead: Lead; activities: LeadActivity[] }>({
+    queryKey: ["agent", "leads", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/attendance/staff/leads/${id}`, { credentials: "include" });
+      return jsonOrThrow(res);
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export interface LeadInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  company?: string;
+  source?: string;
+  status?: LeadStatus;
+  notes?: string;
+}
+
+export function useCreateLead() {
+  const qc = useQueryClient();
+  return useMutation<Lead, Error, LeadInput>({
+    mutationFn: async (input) => {
+      const res = await fetch("/api/attendance/staff/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(input),
+      });
+      const data = await jsonOrThrow(res);
+      return data.item;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent", "leads"] });
+    },
+  });
+}
+
+export function useUpdateLead() {
+  const qc = useQueryClient();
+  return useMutation<Lead, Error, { id: string; patch: Partial<LeadInput> }>({
+    mutationFn: async ({ id, patch }) => {
+      const res = await fetch(`/api/attendance/staff/leads/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(patch),
+      });
+      const data = await jsonOrThrow(res);
+      return data.item;
+    },
+    onSuccess: (_lead, vars) => {
+      qc.invalidateQueries({ queryKey: ["agent", "leads"] });
+      qc.invalidateQueries({ queryKey: ["agent", "leads", vars.id] });
+    },
+  });
+}
+
+export function useAddLeadActivity() {
+  const qc = useQueryClient();
+  return useMutation<LeadActivity, Error, { id: string; type: LeadActivityType; content: string }>({
+    mutationFn: async ({ id, type, content }) => {
+      const res = await fetch(`/api/attendance/staff/leads/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type, content }),
+      });
+      const data = await jsonOrThrow(res);
+      return data.item;
+    },
+    onSuccess: (_act, vars) => {
+      qc.invalidateQueries({ queryKey: ["agent", "leads"] });
+      qc.invalidateQueries({ queryKey: ["agent", "leads", vars.id] });
+    },
+  });
 }
 
 export function useSubmitAttendance() {

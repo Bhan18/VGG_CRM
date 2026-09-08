@@ -115,8 +115,7 @@ function PostsList() {
                     <ExternalLink className="h-3 w-3" /> Open
                   </a>
                   <a
-                    href={p.attachment_url}
-                    download
+                    href={`/api/agent/content/download?url=${encodeURIComponent(p.attachment_url)}&filename=${encodeURIComponent(`${p.title}.pdf`)}`}
                     className="agent-press inline-flex items-center gap-1 font-medium"
                     style={{ color: "var(--brand-emerald)" }}
                     aria-label={`Download ${p.title}`}
@@ -167,9 +166,7 @@ function BrochuresList() {
           </div>
           {b.file_url && (
             <a
-              href={b.file_url}
-              target="_blank"
-              rel="noreferrer"
+              href={`/api/agent/content/download?url=${encodeURIComponent(b.file_url)}&filename=${encodeURIComponent(`${b.title}.pdf`)}`}
               className="agent-press flex h-9 w-9 items-center justify-center rounded-lg"
               style={{ background: "var(--brand-emerald)", color: "#fff" }}
               aria-label={`Download ${b.title}`}
