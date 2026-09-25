@@ -44,7 +44,14 @@ const TABS: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
 export function AdminDashboard() {
   const { signOut, session } = useAgentAuth();
   const { branding } = useBranding();
-  const [tab, setTab] = useState<AdminTab>("overview");
+  const [tab, setTabState] = useState<AdminTab>("overview");
+  // Tabs mount lazily on first visit, then STAY mounted (hidden) so
+  // switching back is instant — no refetch, no skeletons, state kept.
+  const [visited, setVisited] = useState<Set<AdminTab>>(() => new Set(["overview"]));
+  const setTab = (t: AdminTab) => {
+    setVisited((prev) => (prev.has(t) ? prev : new Set(prev).add(t)));
+    setTabState(t);
+  };
 
   const name = session?.employee?.name ?? "Admin";
 
@@ -120,14 +127,30 @@ export function AdminDashboard() {
       </nav>
 
       <main className="agent-frame flex-1 px-4 pb-8 pt-4">
-        {tab === "overview" && <OverviewTab />}
-        {tab === "attendance" && <AttendanceTab />}
-        {tab === "leaves" && <LeavesTab />}
-        {tab === "salary" && <SalaryTab />}
-        {tab === "employees" && <EmployeesTab />}
-        {tab === "leads" && <LeadsAdminTab />}
-        {tab === "content" && <ContentAdminTab />}
-        {tab === "settings" && <SettingsTab />}
+        {visited.has("overview") && (
+          <div hidden={tab !== "overview"}><OverviewTab /></div>
+        )}
+        {visited.has("attendance") && (
+          <div hidden={tab !== "attendance"}><AttendanceTab /></div>
+        )}
+        {visited.has("leaves") && (
+          <div hidden={tab !== "leaves"}><LeavesTab /></div>
+        )}
+        {visited.has("salary") && (
+          <div hidden={tab !== "salary"}><SalaryTab /></div>
+        )}
+        {visited.has("employees") && (
+          <div hidden={tab !== "employees"}><EmployeesTab /></div>
+        )}
+        {visited.has("leads") && (
+          <div hidden={tab !== "leads"}><LeadsAdminTab /></div>
+        )}
+        {visited.has("content") && (
+          <div hidden={tab !== "content"}><ContentAdminTab /></div>
+        )}
+        {visited.has("settings") && (
+          <div hidden={tab !== "settings"}><SettingsTab /></div>
+        )}
       </main>
     </div>
   );

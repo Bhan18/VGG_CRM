@@ -53,10 +53,20 @@ function isMarkOutsideWindow(
 
 export default function AgentPage() {
   const { session, loading, refreshSession } = useAgentAuth();
-  const { tab, setTab } = useAgentNav();
+  const { tab, setTab: setTabState } = useAgentNav();
   const submit = useSubmitAttendance();
   const [capture, setCapture] = useState<CaptureState>({ open: false });
   const [reasonRequired, setReasonRequired] = useState(false);
+  // Staff tabs mount lazily on first visit, then STAY mounted (hidden) so
+  // switching back is instant — cached data, no skeletons, state kept.
+  const [visited, setVisited] = useState<Set<AgentTab>>(() => new Set(["home"]));
+  const setTab = useCallback(
+    (t: AgentTab) => {
+      setVisited((prev) => (prev.has(t) ? prev : new Set(prev).add(t)));
+      setTabState(t);
+    },
+    [setTabState],
+  );
 
   // Lock body scroll while camera is open.
   useEffect(() => {
@@ -186,22 +196,32 @@ export default function AgentPage() {
     <div className="agent-shell flex min-h-dynamic flex-col">
       <TopBar />
       <main className="agent-frame flex-1">
-        {tab === "home" && (
-          <HomeTab
-            onCheckIn={() => startCapture("CHECK_IN")}
-            onCheckOut={() => startCapture("CHECK_OUT")}
-          />
+        {visited.has("home") && (
+          <div hidden={tab !== "home"}>
+            <HomeTab
+              onCheckIn={() => startCapture("CHECK_IN")}
+              onCheckOut={() => startCapture("CHECK_OUT")}
+            />
+          </div>
         )}
-        {tab === "content" && <ContentTab />}
-        {tab === "attendance" && (
-          <AttendanceTab
-            onCheckIn={() => startCapture("CHECK_IN")}
-            onCheckOut={() => startCapture("CHECK_OUT")}
-            busy={submit.isPending}
-          />
+        {visited.has("content") && (
+          <div hidden={tab !== "content"}><ContentTab /></div>
         )}
-        {tab === "leads" && <LeadsTab />}
-        {tab === "profile" && <ProfileTab />}
+        {visited.has("attendance") && (
+          <div hidden={tab !== "attendance"}>
+            <AttendanceTab
+              onCheckIn={() => startCapture("CHECK_IN")}
+              onCheckOut={() => startCapture("CHECK_OUT")}
+              busy={submit.isPending}
+            />
+          </div>
+        )}
+        {visited.has("leads") && (
+          <div hidden={tab !== "leads"}><LeadsTab /></div>
+        )}
+        {visited.has("profile") && (
+          <div hidden={tab !== "profile"}><ProfileTab /></div>
+        )}
       </main>
       <BottomNav />
 

@@ -353,11 +353,14 @@ create policy "public read lead activities"
 -- Two private buckets:
 --   1. attendance-photos  — check-in/out selfies
 --   2. company-resources  — brochures, policies, forms (staff-facing)
+-- One public bucket:
+--   3. employee-profiles — staff profile photos (shown directly in <img>)
 
 insert into storage.buckets (id, name, public)
 values
   ('attendance-photos', 'attendance-photos', false),
-  ('company-resources', 'company-resources', false)
+  ('company-resources', 'company-resources', false),
+  ('employee-profiles', 'employee-profiles', true)
 on conflict (id) do nothing;
 
 -- Storage policies: only the service-role key (server) can upload and

@@ -24,6 +24,7 @@ import {
   ErrorState,
   StatusPill,
 } from "@/components/agent/ui-primitives";
+import { FileDrop } from "./file-drop";
 
 type EmployeeToday = {
   status: string;
@@ -40,6 +41,7 @@ type AdminEmployee = {
   department: string;
   role: string;
   status: string;
+  profilePhoto: string | null;
   today: EmployeeToday | null;
 };
 
@@ -191,7 +193,9 @@ export function EmployeesTab() {
             return (
               <div key={e.id} className={`agent-card p-3.5 ${e.status !== "ACTIVE" ? "opacity-75" : ""}`}>
                 <div className="flex items-center gap-3">
-                  {e.today?.checkInPhoto ? (
+                  {e.profilePhoto ? (
+                    <img src={e.profilePhoto} alt="" className="h-11 w-11 rounded-full object-cover" />
+                  ) : e.today?.checkInPhoto ? (
                     <img src={e.today.checkInPhoto} alt="" className="h-11 w-11 rounded-full object-cover" />
                   ) : (
                     <div
@@ -326,6 +330,7 @@ function EmployeeForm({
   const [jobRole, setJobRole] = useState(employee && employee.role !== "ADMIN" ? employee.role : "");
   const [isAdmin, setIsAdmin] = useState(employee?.role === "ADMIN");
   const [password, setPassword] = useState("");
+  const [photo, setPhoto] = useState<string | null>(employee?.profilePhoto ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -357,6 +362,7 @@ function EmployeeForm({
                 phone: phone.trim(),
                 department: department.trim(),
                 role,
+                profilePhoto: photo,
                 ...(password ? { password } : {}),
               }
             : {
@@ -365,6 +371,7 @@ function EmployeeForm({
                 phone: phone.trim(),
                 department: department.trim(),
                 role,
+                profilePhoto: photo,
                 ...(password ? { password } : {}),
               },
         ),
@@ -398,7 +405,19 @@ function EmployeeForm({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <FileDrop
+          label="Profile photo"
+          accept="image/*"
+          maxMB={5}
+          uploadUrl="/api/attendance/admin/upload"
+          kind="image"
+          value={photo}
+          onUploaded={(url) => setPhoto(url)}
+          onClear={() => setPhoto(null)}
+          hint="Drag & drop or choose a photo · up to 5MB"
+        />
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <Field label="Employee code *">
             <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="EMP009" className={inputCls} />
           </Field>

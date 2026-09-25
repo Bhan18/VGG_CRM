@@ -27,6 +27,7 @@ import {
   ErrorState,
 } from "@/components/agent/ui-primitives";
 import { ConfirmSheet } from "./employees-tab";
+import { FileDrop, getVideoDuration } from "./file-drop";
 
 type SubTab = "posts" | "brochures" | "videos";
 
@@ -311,7 +312,9 @@ function ContentForm({
   const [file, setFile] = useState(
     type === "posts" ? (p?.attachment_url ?? "") : type === "brochures" ? (b?.file_url ?? "") : (v?.video_url ?? ""),
   );
+  const [fileBytes, setFileBytes] = useState<number | null>(b?.file_size_bytes ?? null);
   const [thumb, setThumb] = useState(v?.thumbnail_url ?? "");
+  const [durationSecs, setDurationSecs] = useState<number | null>(v?.duration_seconds ?? null);
   const [published, setPublished] = useState(!!item?.published_at);
   const [pinned, setPinned] = useState(p?.pinned ?? false);
   const [busy, setBusy] = useState(false);
@@ -337,10 +340,12 @@ function ContentForm({
         payload.description = body.trim() || null;
         payload.cover_image_url = cover.trim() || null;
         payload.file_url = file.trim() || null;
+        payload.file_size_bytes = fileBytes;
       } else {
         payload.description = body.trim() || null;
         payload.thumbnail_url = thumb.trim() || (cover.trim() || null);
         payload.video_url = file.trim() || null;
+        payload.duration_seconds = durationSecs;
       }
       payload.published_at = published ? item?.published_at ?? new Date().toISOString() : null;
 
@@ -363,8 +368,6 @@ function ContentForm({
       setBusy(false);
     }
   }
-
-  const fileLabel = type === "posts" ? "Attachment file URL (PDF)" : type === "brochures" ? "Brochure file URL (PDF)" : "Video URL (YouTube / MP4)";
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={onClose}>
@@ -392,21 +395,72 @@ function ContentForm({
           </Field>
         </div>
         <div className="mt-3">
-          <Field label={fileLabel}>
-            <input value={file} onChange={(e) => setFile(e.target.value)} placeholder="https://..." className={inputCls} />
-          </Field>
+          {type === "videos" ? (
+            <FileDrop
+              label="Video file *"
+              accept="video/*"
+              maxMB={100}
+              uploadUrl="/api/attendance/admin/content/upload"
+              folder="videos"
+              kind="video"
+              value={file || null}
+              onFileSelected={(f) => void getVideoDuration(f).then((d) => { if (d != null) setDurationSecs(d); })}
+              onUploaded={(url) => setFile(url)}
+              onClear={() => { setFile(""); setDurationSecs(null); }}
+              hint="Drag & drop or choose a video · up to 100MB"
+            />
+          ) : (
+            <FileDrop
+              label={type === "posts" ? "Attachment (PDF / image)" : "Brochure file (PDF) *"}
+              accept={type === "posts" ? ".pdf,image/*" : ".pdf"}
+              maxMB={25}
+              uploadUrl="/api/attendance/admin/content/upload"
+              folder="files"
+              kind="file"
+              value={file || null}
+              onUploaded={(url, bytes) => { setFile(url); setFileBytes(bytes); }}
+              onClear={() => { setFile(""); setFileBytes(null); }}
+              hint="Drag & drop or choose a file · up to 25MB"
+            />
+          )}
+          {type === "videos" && durationSecs != null && (
+            <div className="mt-1 text-[10px] tabular-nums text-[var(--brand-ink)]/45">
+              Duration: {Math.floor(durationSecs / 60)}:{String(durationSecs % 60).padStart(2, "0")}
+            </div>
+          )}
+          {type === "brochures" && fileBytes != null && file && (
+            <div className="mt-1 text-[10px] tabular-nums text-[var(--brand-ink)]/45">
+              Size: {(fileBytes / 1024 / 1024).toFixed(1)} MB
+            </div>
+          )}
         </div>
         {type === "videos" ? (
           <div className="mt-3">
-            <Field label="Thumbnail image URL">
-              <input value={thumb} onChange={(e) => setThumb(e.target.value)} placeholder="https://..." className={inputCls} />
-            </Field>
+            <FileDrop
+              label="Thumbnail image"
+              accept="image/*"
+              maxMB={10}
+              uploadUrl="/api/attendance/admin/content/upload"
+              folder="thumbs"
+              kind="image"
+              value={thumb || null}
+              onUploaded={(url) => setThumb(url)}
+              onClear={() => setThumb("")}
+            />
           </div>
         ) : (
           <div className="mt-3">
-            <Field label="Cover image URL">
-              <input value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://..." className={inputCls} />
-            </Field>
+            <FileDrop
+              label="Cover image"
+              accept="image/*"
+              maxMB={10}
+              uploadUrl="/api/attendance/admin/content/upload"
+              folder="covers"
+              kind="image"
+              value={cover || null}
+              onUploaded={(url) => setCover(url)}
+              onClear={() => setCover("")}
+            />
           </div>
         )}
 

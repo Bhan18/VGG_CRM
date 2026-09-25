@@ -31,7 +31,6 @@ export const GET = withAttendanceErrorHandler(
       )
       .eq("attendance_date", dayStr);
     if (error) throw new Error(error.message);
-
     const byEmployee = new Map<
       string,
       { status: string; checkInTime: string | null; checkOutTime: string | null; checkInPhoto: string | null }
@@ -45,16 +44,17 @@ export const GET = withAttendanceErrorHandler(
       });
     }
 
-    const result = employees.map((e) => ({
-      id: e.id,
-      employeeCode: e.employee_code,
-      name: e.name,
-      phone: e.phone,
-      department: e.department,
-      role: e.role,
-      status: e.status,
-      today: byEmployee.get(e.id) ?? null,
-    }));
+  const result = employees.map((e) => ({
+    id: e.id,
+    employeeCode: e.employee_code,
+    name: e.name,
+    phone: e.phone,
+    department: e.department,
+    role: e.role,
+    status: e.status,
+    profilePhoto: e.profile_photo ?? null,
+    today: byEmployee.get(e.id) ?? null,
+  }));
 
     return jsonNoCache({ employees: result, date: dayStr });
   },
@@ -92,6 +92,7 @@ export const POST = withAttendanceErrorHandler(
           phone,
           department,
           role: body?.role ? String(body.role).trim() : "Staff",
+          profilePhoto: body?.profilePhoto ? String(body.profilePhoto) : null,
           password: body?.password ? String(body.password) : undefined,
         },
         ctx,
@@ -133,6 +134,9 @@ export const PATCH = withAttendanceErrorHandler(
       patch.department = String(body.department).trim();
     }
     if (body?.role != null) patch.role = String(body.role).trim() || "Staff";
+    if (body?.profilePhoto !== undefined) {
+      patch.profilePhoto = body.profilePhoto ? String(body.profilePhoto) : null;
+    }
     if (body?.employeeCode != null) {
       if (!String(body.employeeCode).trim()) return errorResponse("Employee code cannot be empty", 400);
       patch.employeeCode = String(body.employeeCode).trim();
