@@ -194,8 +194,7 @@ export function useUpdateLead() {
   });
 }
 
-export function useAddLeadActivity() {
-  const qc = useQueryClient();
+export function useAddLeadActivity() {  const qc = useQueryClient();
   return useMutation<LeadActivity, Error, { id: string; type: LeadActivityType; content: string }>({
     mutationFn: async ({ id, type, content }) => {
       const res = await fetch(`/api/attendance/staff/leads/${id}`, {
@@ -252,6 +251,106 @@ export function useSubmitAttendance() {
       if (result.ok) {
         qc.invalidateQueries({ queryKey: ["agent", "attendance-log"] });
       }
+    },
+  });
+}
+
+// ─── Branch-manager payments (main project, pending until approved) ─────
+
+export interface BmPlotOption {
+  id: string;
+  plotNumber: string;
+  block: string | null;
+  status: string;
+  totalPrice: number;
+  paid: number;
+  balance: number;
+  customerId: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  bookingId: string | null;
+  saleId: string | null;
+  projectName: string | null;
+}
+
+export function useBmPlots(enabled: boolean) {
+  return useQuery<BmPlotOption[]>({
+    queryKey: ["agent", "bm", "plots"],
+    queryFn: async () => {
+      const res = await fetch("/api/bm/plots", { credentials: "include" });
+      const data = await jsonOrThrow(res);
+      return Array.isArray(data?.items) ? data.items : [];
+    },
+    enabled,
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+export interface BmRecording {
+  id: string;
+  date: string;
+  amount: number;
+  paymentMode: string;
+  referenceNumber: string | null;
+  bank: string | null;
+  chequeNumber: string | null;
+  transactionId: string | null;
+  remarks: string | null;
+  status: string;
+  rejectionRemark: string | null;
+  approvedAt: string | null;
+  proofCount: number;
+  proofs: string[];
+  createdAt: string;
+  plotNumber: string | null;
+  plotBlock: string | null;
+  customerName: string | null;
+}
+
+export function useBmPayments(enabled: boolean) {
+  return useQuery<BmRecording[]>({
+    queryKey: ["agent", "bm", "payments"],
+    queryFn: async () => {
+      const res = await fetch("/api/bm/payments", { credentials: "include" });
+      const data = await jsonOrThrow(res);
+      return Array.isArray(data?.items) ? data.items : [];
+    },
+    enabled,
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export interface BmPaymentInput {
+  plotId: string;
+  date: string;
+  amount: number;
+  paymentMode: string;
+  referenceNumber?: string;
+  bank?: string;
+  chequeNumber?: string;
+  transactionId?: string;
+  remarks?: string;
+  proofUrls: string[];
+}
+
+export function useRecordBmPayment() {
+  const qc = useQueryClient();
+  return useMutation<{ id: string }, Error, BmPaymentInput>({
+    mutationFn: async (input) => {
+      const res = await fetch("/api/bm/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(input),
+      });
+      const data = await jsonOrThrow(res);
+      return { id: data.id };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent", "bm", "payments"] });
+      qc.invalidateQueries({ queryKey: ["agent", "bm", "plots"] });
     },
   });
 }

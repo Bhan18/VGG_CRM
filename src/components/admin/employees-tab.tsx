@@ -216,6 +216,14 @@ export function EmployeesTab() {
                           Admin
                         </span>
                       )}
+                      {e.role === "BRANCH_MANAGER" && (
+                        <span
+                          className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase"
+                          style={{ background: "color-mix(in srgb, #7c3aed 12%, white)", color: "#7c3aed" }}
+                        >
+                          BM
+                        </span>
+                      )}
                       {e.status !== "ACTIVE" && (
                         <span className="shrink-0 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-black/50">
                           Inactive
@@ -327,8 +335,9 @@ function EmployeeForm({
   const [name, setName] = useState(employee?.name ?? "");
   const [phone, setPhone] = useState(employee?.phone ?? "");
   const [department, setDepartment] = useState(employee?.department ?? "");
-  const [jobRole, setJobRole] = useState(employee && employee.role !== "ADMIN" ? employee.role : "");
+  const [jobRole, setJobRole] = useState(employee && employee.role !== "ADMIN" && employee.role !== "BRANCH_MANAGER" ? employee.role : "");
   const [isAdmin, setIsAdmin] = useState(employee?.role === "ADMIN");
+  const [isBm, setIsBm] = useState(employee?.role === "BRANCH_MANAGER");
   const [password, setPassword] = useState("");
   const [photo, setPhoto] = useState<string | null>(employee?.profilePhoto ?? null);
   const [busy, setBusy] = useState(false);
@@ -348,7 +357,7 @@ function EmployeeForm({
     }
     setBusy(true);
     try {
-      const role = isAdmin ? "ADMIN" : jobRole.trim() || "Staff";
+      const role = isAdmin ? "ADMIN" : isBm ? "BRANCH_MANAGER" : jobRole.trim() || "Staff";
       const res = await fetch("/api/attendance/admin/employees", {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -435,7 +444,7 @@ function EmployeeForm({
             <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Construction" className={inputCls} />
           </Field>
           <Field label="Job role">
-            <input value={jobRole} onChange={(e) => setJobRole(e.target.value)} placeholder="Site Engineer" disabled={isAdmin} className={`${inputCls} disabled:opacity-50`} />
+            <input value={jobRole} onChange={(e) => setJobRole(e.target.value)} placeholder="Site Engineer" disabled={isAdmin || isBm} className={`${inputCls} disabled:opacity-50`} />
           </Field>
         </div>
 
@@ -444,11 +453,23 @@ function EmployeeForm({
             type="checkbox"
             checked={isAdmin}
             disabled={isSelf}
-            onChange={(e) => setIsAdmin(e.target.checked)}
+            onChange={(e) => { setIsAdmin(e.target.checked); if (e.target.checked) setIsBm(false); }}
             className="h-4 w-4 accent-[var(--brand-emerald)]"
           />
           Administrator access (full dashboard)
           {isSelf && <span className="font-normal text-[var(--brand-ink)]/45">(your own access can't be removed)</span>}
+        </label>
+
+        <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs font-medium">
+          <input
+            type="checkbox"
+            checked={isBm}
+            disabled={isSelf}
+            onChange={(e) => { setIsBm(e.target.checked); if (e.target.checked) setIsAdmin(false); }}
+            className="h-4 w-4 accent-[#7c3aed]"
+          />
+          Branch Manager (payments tab in staff app)
+          {isSelf && <span className="font-normal text-[var(--brand-ink)]/45">(your own role can't be changed)</span>}
         </label>
 
         <div className="mt-3">

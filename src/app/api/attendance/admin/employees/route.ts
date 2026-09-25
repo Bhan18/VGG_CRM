@@ -162,8 +162,8 @@ export const PATCH = withAttendanceErrorHandler(
       if (patch.status === "INACTIVE") {
         return errorResponse("You cannot deactivate your own account", 400);
       }
-      if (patch.role === "Staff") {
-        return errorResponse("You cannot remove your own admin access", 400);
+      if (patch.role !== undefined && patch.role !== "ADMIN") {
+        return errorResponse("You cannot change your own role", 400);
       }
     }
 
