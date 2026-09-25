@@ -216,15 +216,7 @@ function CustomerPicker({
                   Plot {c.plots.map((p) => p.plotNumber).join(", ")}
                 </div>
               </div>
-              <div className="shrink-0 text-right">
-                <div
-                  className="text-xs font-semibold tabular-nums"
-                  style={{ color: "var(--brand-checkout)" }}
-                >
-                  {inrCompact(c.totalOutstanding)}
-                </div>
-                <div className="text-[10px] text-[var(--brand-ink)]/45">pending</div>
-              </div>
+              <ChevronLeft className="h-4 w-4 shrink-0 rotate-180 text-[var(--brand-ink)]/30" />
             </button>
           ))
         )}
@@ -239,7 +231,7 @@ function CustomerCard({ customer: c, onChange }: { customer: BmCustomer; onChang
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold">{c.name}</div>
         <div className="truncate text-[11px] text-[var(--brand-ink)]/55">
-          Plot {c.plots.map((p) => p.plotNumber).join(", ")} · {inrCompact(c.totalOutstanding)} pending
+          Plot {c.plots.map((p) => p.plotNumber).join(", ")} · Due {inrCompact(c.totalOutstanding)}
         </div>
       </div>
       <button
@@ -403,7 +395,7 @@ function RecordForm({ customers, customersLoading, customersError, onDone }: { c
                 >
                   <div className="text-xs font-semibold">Plot {p.plotNumber}</div>
                   <div className="text-[10px] tabular-nums" style={{ color: "var(--brand-checkout)" }}>
-                    {inrCompact(p.balance)} pending
+                    Due {inrCompact(p.balance)}
                   </div>
                 </button>
               );
@@ -414,7 +406,7 @@ function RecordForm({ customers, customersLoading, customersError, onDone }: { c
 
       {plot && (
         <div className="rounded-xl bg-white p-2.5 text-center" style={{ border: "1px solid color-mix(in srgb, var(--brand-emerald) 12%, #e5e0d4)" }}>
-          <div className="text-[10px] text-[var(--brand-ink)]/50">Pending collection</div>
+          <div className="text-[10px] text-[var(--brand-ink)]/50">Due amount</div>
           <div className="text-base font-semibold tabular-nums" style={{ color: "var(--brand-checkout)" }}>
             {inr(plot.balance)}
           </div>
