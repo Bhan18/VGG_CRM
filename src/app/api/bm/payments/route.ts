@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { requireBranchManager } from "@/lib/agent/bm-guard";
-import { getServerSupabase } from "@/lib/agent/server-supabase";
+import { requireBranchManager, requireAdminDb } from "@/lib/agent/bm-guard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,10 +13,9 @@ export async function GET(req: NextRequest) {
   const gate = await requireBranchManager(req);
   if (!gate.authorized) return gate.response;
 
-  const sb = getServerSupabase();
-  if (!sb) {
-    return NextResponse.json({ error: "Service not configured." }, { status: 503 });
-  }
+  const db = requireAdminDb();
+  if (!db.ok) return db.response;
+  const sb = db.sb;
 
   const { data, error } = await sb
     .from("payments")
@@ -83,10 +81,9 @@ export async function POST(req: NextRequest) {
   const gate = await requireBranchManager(req);
   if (!gate.authorized) return gate.response;
 
-  const sb = getServerSupabase();
-  if (!sb) {
-    return NextResponse.json({ error: "Service not configured." }, { status: 503 });
-  }
+  const db = requireAdminDb();
+  if (!db.ok) return db.response;
+  const sb = db.sb;
 
   const body = await req.json().catch(() => null);
   const amount = Number(body?.amount);

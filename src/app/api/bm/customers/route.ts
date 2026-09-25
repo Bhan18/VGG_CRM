@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireBranchManager } from "@/lib/agent/bm-guard";
-import { getServerSupabase } from "@/lib/agent/server-supabase";
+import { requireBranchManager, requireAdminDb } from "@/lib/agent/bm-guard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,10 +39,9 @@ export async function GET(req: NextRequest) {
   const gate = await requireBranchManager(req);
   if (!gate.authorized) return gate.response;
 
-  const sb = getServerSupabase();
-  if (!sb) {
-    return NextResponse.json({ error: "Service not configured." }, { status: 503 });
-  }
+  const db = requireAdminDb();
+  if (!db.ok) return db.response;
+  const sb = db.sb;
 
   const { data: plots, error: plotErr } = await sb
     .from("plots")
