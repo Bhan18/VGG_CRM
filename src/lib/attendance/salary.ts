@@ -25,6 +25,7 @@ import {
   type AdminContext,
 } from "./client";
 import { logAudit } from "./audit";
+import { closeStaleOpenDays } from "./records";
 import {
   unwrapMany,
   unwrapSingle,
@@ -258,6 +259,7 @@ async function getMonthlyAttendanceCounts(
   year: number,
 ): Promise<AttendanceCounts & { workingDaysInMonth: number }> {
   const supabase = getAttendanceAdminClient();
+  await closeStaleOpenDays();
   // Query records for the month
   const dateFrom = `${year}-${String(month).padStart(2, "0")}-01`;
   const lastDay = new Date(year, month, 0).getDate();
@@ -271,7 +273,6 @@ async function getMonthlyAttendanceCounts(
     .lte("attendance_date", dateTo);
 
   if (error) throw new Error(error.message);
-
   const counts: AttendanceCounts = {
     present: 0,
     late: 0,

@@ -22,6 +22,7 @@ import {
   Plane,
   UserX,
   Activity,
+  AlertTriangle,
   X,
 } from "lucide-react";
 import { useAdminFetch } from "@/hooks/admin/use-admin-data";
@@ -535,7 +536,8 @@ function tooltipFor(d: MonthlyDay): string {
   if (!d.status) return `${dateLabel} · Absent`;
   const times = `${fmtTime(d.checkIn)} → ${fmtTime(d.checkOut)}`;
   const hrs = d.workingMinutes != null ? ` · ${formatMinutes(d.workingMinutes)}` : "";
-  return `${dateLabel} · ${d.status.replace("_", " ")} · ${times}${hrs}`;
+  const missing = d.checkIn && !d.checkOut ? " · no check-out" : "";
+  return `${dateLabel} · ${d.status.replace("_", " ")} · ${times}${hrs}${missing}`;
 }
 
 // ─── Detail sheet ────────────────────────────────────────────────────────
@@ -629,6 +631,8 @@ function DaySummaryChip({ color, label, value }: { color: string; label: string;
 
 function DayRow({ day }: { day: MonthlyDay & { absent: boolean } }) {
   const dt = new Date(`${day.date}T00:00:00`);
+  // Past day with a check-in but no check-out → auto-closed as half-day.
+  const missingCheckout = !!day.checkIn && !day.checkOut && day.date < todayStr();
   return (
     <div className="flex items-center gap-3 rounded-xl border px-3 py-2.5" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 10%, #e5e0d4)" }}>
       <div className="w-11 flex-shrink-0 text-center">
@@ -648,6 +652,11 @@ function DayRow({ day }: { day: MonthlyDay & { absent: boolean } }) {
             <span className="flex items-center gap-1"><Clock3 className="h-3 w-3 text-[var(--brand-ink)]/35" />{fmtTime(day.checkIn)} → {fmtTime(day.checkOut)}</span>
             {day.workingMinutes != null && <span>{formatMinutes(day.workingMinutes)}</span>}
             {day.reason && <span className="w-full truncate text-[10px] text-[var(--brand-ink)]/50">“{day.reason}”</span>}
+            {missingCheckout && (
+              <span className="flex w-full items-center gap-1 text-[10px] font-medium" style={{ color: "#d97706" }}>
+                <AlertTriangle className="h-3 w-3" /> Check-out missing — counted as half-day
+              </span>
+            )}
           </div>
         ) : (
           <div className="mt-1 text-[10px] text-[var(--brand-ink)]/45">No record</div>
@@ -760,7 +769,17 @@ function DayRecordsView() {
                       </td>
                       <td className="px-2 py-2.5 tabular-nums">{fmtDate(r.attendance_date)}</td>
                       <td className="px-2 py-2.5 tabular-nums">{fmtTime(r.check_in_time)}</td>
-                      <td className="px-2 py-2.5 tabular-nums">{fmtTime(r.check_out_time)}</td>
+                      <td className="px-2 py-2.5 tabular-nums">
+                        {r.check_out_time ? (
+                          fmtTime(r.check_out_time)
+                        ) : r.check_in_time && r.attendance_date.slice(0, 10) < todayStr() ? (
+                          <span className="inline-flex items-center gap-1" style={{ color: "#d97706" }} title="Check-out missing — counted as half-day">
+                            — <AlertTriangle className="h-3 w-3" />
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="px-2 py-2.5 tabular-nums">
                         {r.working_minutes != null ? formatMinutes(r.working_minutes) : "—"}
                       </td>
@@ -855,6 +874,12 @@ function PhotoThumb({ path, label }: { path: string; label: string }) {
 function currentMonthStr(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Local "YYYY-MM-DD" (device date — good enough for past-vs-today checks). */
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function shiftMonth(month: string, delta: number): string {

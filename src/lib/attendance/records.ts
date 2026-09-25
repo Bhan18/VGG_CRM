@@ -595,6 +595,7 @@ export type Overview = {
 
 export async function getOverview(date = new Date()): Promise<Overview> {
   const supabase = getAttendanceAdminClient();
+  await closeStaleOpenDays();
   const dayStr = dateOnly(date).toISOString().slice(0, 10);
 
   // Total active staff
@@ -697,6 +698,7 @@ export async function getReport(opts: {
   status?: string;
 }): Promise<{ rows: ReportRow[]; rawCount: number }> {
   const supabase = getAttendanceAdminClient();
+  await closeStaleOpenDays();
   const dateFrom =
     typeof opts.dateFrom === "string"
       ? opts.dateFrom
@@ -726,8 +728,7 @@ export async function getReport(opts: {
   const records = data ?? [];
   const byEmployee = new Map<string, ReportRow>();
 
-  for (const r of records) {
-    const empId = r.employee_id;
+  for (const r of records) {    const empId = r.employee_id;
     if (!byEmployee.has(empId)) {
       const emp = r.attendance_employees;
       byEmployee.set(empId, {
@@ -912,12 +913,44 @@ function dateStrInZone(tz: string, date = new Date()): string {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
+// ---- STALE OPEN DAYS ----------------------------------------------------
+// A day with a check-in but no check-out can never be closed by the
+// employee once the date has passed, and its check-in-time status
+// (PRESENT/LATE) would otherwise earn full-day pay forever. Lazily
+// downgrade such stale open days to HALF_DAY (half pay). Today's open
+// records are untouched — the employee may still check out.
+//
+// Called at the start of every aggregation path (overview, reports,
+// monthly dashboard, salary counts) so all views agree. Idempotent:
+// already-closed rows no longer match the filter.
+// No audit entry — this is a deterministic system action; any later admin
+// correction goes through updateRecord(), which IS audited.
+
+export async function closeStaleOpenDays(): Promise<number> {
+  const supabase = getAttendanceAdminClient();
+  const settings = await getSettings();
+  const todayStr = dateStrInZone(settings.timezone);
+
+  const { data, error } = await supabase
+    .from("attendance_records")
+    .update({ status: "HALF_DAY", updated_at: new Date().toISOString() })
+    .lt("attendance_date", todayStr)
+    .not("check_in_time", "is", null)
+    .is("check_out_time", null)
+    .in("status", ["PRESENT", "LATE"])
+    .select("id");
+
+  if (error) throw new Error(error.message);
+  return data?.length ?? 0;
+}
+
 export async function getMonthlyReport(opts: {
   month: string; // YYYY-MM
   department?: string;
 }): Promise<MonthlyReport> {
   const supabase = getAttendanceAdminClient();
   const settings = await getSettings();
+  await closeStaleOpenDays();
   const tz = settings.timezone;
 
   const [yy, mm] = opts.month.split("-").map(Number);
