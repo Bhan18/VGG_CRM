@@ -2,7 +2,7 @@
 // Keeps all ATTENDANCE_* vars untouched. Backs up .env.local first.
 // Prints refs only, never secret values.
 const fs = require("fs");
-const AGENTS = "C:\\Users\\paris\\Desktop\\agents_app\\.env.local";
+const AGENTS = process.argv[2] || "C:\\Users\\paris\\Desktop\\agents_app\\.env.local";
 const ADMIN = "C:\\Users\\paris\\Desktop\\admin_app\\.env.local";
 
 function loadEnv(f) {
