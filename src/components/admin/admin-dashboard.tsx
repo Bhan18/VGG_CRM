@@ -15,6 +15,7 @@ import {
   Settings,
   Target,
   Newspaper,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useBranding } from "@/hooks/agent/use-branding";
@@ -26,13 +27,15 @@ import { EmployeesTab } from "./employees-tab";
 import { LeavesTab } from "./leaves-tab";
 import { LeadsAdminTab } from "./leads-tab";
 import { ContentAdminTab } from "./content-tab";
+import { PaymentApprovalsTab } from "./payment-approvals-tab";
 import { SettingsTab } from "./settings-tab";
 
-type AdminTab = "overview" | "attendance" | "leaves" | "salary" | "employees" | "leads" | "content" | "settings";
+type AdminTab = "overview" | "attendance" | "leaves" | "salary" | "employees" | "leads" | "content" | "approvals" | "settings";
 
 const TABS: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "attendance", label: "Attendance", icon: CalendarCheck2 },
+  { id: "approvals", label: "Approvals", icon: ClipboardCheck },
   { id: "leaves", label: "Leaves", icon: CalendarOff },
   { id: "salary", label: "Salary", icon: Banknote },
   { id: "employees", label: "Employees", icon: Users },
@@ -132,6 +135,9 @@ export function AdminDashboard() {
         )}
         {visited.has("attendance") && (
           <div hidden={tab !== "attendance"}><AttendanceTab /></div>
+        )}
+        {visited.has("approvals") && (
+          <div hidden={tab !== "approvals"}><PaymentApprovalsTab /></div>
         )}
         {visited.has("leaves") && (
           <div hidden={tab !== "leaves"}><LeavesTab /></div>
