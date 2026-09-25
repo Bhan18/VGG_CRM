@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getServerSupabase } from "./server-supabase";
+import { getAttendanceAdminClient } from "@/lib/attendance/client";
 
 export async function getLogoUrl(): Promise<string | null> {
-  const sb = getServerSupabase();
-  if (!sb) return null;
+  // Same source as /api/agent/branding: ATTENDANCE project's agent_settings.
+  const sb = getAttendanceAdminClient();
   const { data, error } = await sb
     .from("agent_settings")
     .select("logo_url")

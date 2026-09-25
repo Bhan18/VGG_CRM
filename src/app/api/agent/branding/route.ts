@@ -4,7 +4,7 @@
 // Colors are NOT configurable — they are baked into the app (emerald+gold).
 
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/agent/server-supabase";
+import { getAttendanceAdminClient } from "@/lib/attendance/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,10 +29,9 @@ const CACHE_HEADERS: Record<string, string> = {
 };
 
 export async function GET() {
-  const sb = getServerSupabase();
-  if (!sb) {
-    return NextResponse.json(DEFAULTS, { headers: CACHE_HEADERS });
-  }
+  // Branding lives in the ATTENDANCE project (agent_settings id=1) — the
+  // same row the admin website's Staff Branding page writes.
+  const sb = getAttendanceAdminClient();
   const { data, error } = await sb
     .from("agent_settings")
     .select("app_name, tagline, logo_url")

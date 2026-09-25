@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getServerSupabase } from "@/lib/agent/server-supabase";
+import { getAttendanceAdminClient } from "@/lib/attendance/client";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +7,8 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   let appName = "VGG";
   let logoUrl: string | null = "/logo.svg";
 
-  const sb = getServerSupabase();
+  // Same source as /api/agent/branding: ATTENDANCE project's agent_settings.
+  const sb = getAttendanceAdminClient();
   if (sb) {
     const { data } = await sb
       .from("agent_settings")
