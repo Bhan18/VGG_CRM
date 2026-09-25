@@ -274,6 +274,14 @@ export interface BmCustomer {
   id: string;
   name: string;
   phone: string | null;
+  alternatePhone: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  occupation: string | null;
+  photo: string | null;
+  remarks: string | null;
   totalOutstanding: number;
   totalPaid: number;
   plots: BmPlotOption[];

@@ -22,6 +22,20 @@ type PlotRow = {
   project_id: string | null;
 };
 
+type CustomerRow = {
+  id: string;
+  name: string;
+  phone: string | null;
+  alternate_phone: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  occupation: string | null;
+  photo: string | null;
+  remarks: string | null;
+};
+
 export async function GET(req: NextRequest) {
   const gate = await requireBranchManager(req);
   if (!gate.authorized) return gate.response;
@@ -53,8 +67,12 @@ export async function GET(req: NextRequest) {
       ? sb.from("payments").select("plot_id, amount").in("plot_id", plotIds).eq("status", "approved")
       : Promise.resolve({ data: [] as { plot_id: string; amount: number }[] }),
     customerIds.length
-      ? sb.from("customers").select("id, name, phone").in("id", customerIds).order("name", { ascending: true })
-      : Promise.resolve({ data: [] as { id: string; name: string; phone: string }[] }),
+      ? sb
+          .from("customers")
+          .select("id, name, phone, alternate_phone, email, address, city, state, occupation, photo, remarks")
+          .in("id", customerIds)
+          .order("name", { ascending: true })
+      : Promise.resolve({ data: [] as CustomerRow[] }),
     bookingIds.length
       ? sb.from("bookings").select("id, discount").in("id", bookingIds)
       : Promise.resolve({ data: [] as { id: string; discount: number }[] }),
@@ -74,7 +92,7 @@ export async function GET(req: NextRequest) {
   const discountBySale = new Map(((saleRes.data ?? []) as { id: string; discount: number }[]).map((s) => [s.id, s.discount ?? 0]));
   const projectById = new Map(((projRes.data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
 
-  const customers = ((custRes.data ?? []) as { id: string; name: string; phone: string }[]).map((c) => {
+  const customers = ((custRes.data ?? []) as CustomerRow[]).map((c) => {
     const cPlots = rows
       .filter((p) => p.customer_id === c.id)
       .map((p) => {
@@ -101,6 +119,14 @@ export async function GET(req: NextRequest) {
       id: c.id,
       name: c.name,
       phone: c.phone,
+      alternatePhone: c.alternate_phone,
+      email: c.email,
+      address: c.address,
+      city: c.city,
+      state: c.state,
+      occupation: c.occupation,
+      photo: c.photo,
+      remarks: c.remarks,
       totalOutstanding,
       totalPaid: cPlots.reduce((s, p) => s + p.paid, 0),
       plots: cPlots,
