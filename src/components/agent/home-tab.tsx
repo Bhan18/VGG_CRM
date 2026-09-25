@@ -28,6 +28,7 @@ import {
   ChevronRight,
   CalendarCheck,
   ArrowRight,
+  Wallet,
 } from "lucide-react";
 import type { AgentTodayRecord } from "@/lib/agent/types";
 
@@ -78,7 +79,7 @@ export function HomeTab({ onCheckIn, onCheckOut }: HomeTabProps) {
         />
       </section>
 
-      {/* Quick actions — 2×2 grid */}
+      {/* Quick actions — 2×3 grid */}
       <section>
         <h2 className="mb-3 text-[15px] font-semibold tracking-tight">Quick access</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -87,6 +88,12 @@ export function HomeTab({ onCheckIn, onCheckOut }: HomeTabProps) {
             label="Attendance"
             sub={checkedIn ? "View today" : "Mark now"}
             onClick={() => setTab("attendance")}
+          />
+          <QuickAction
+            icon={Wallet}
+            label="Record Payment"
+            sub="By BM — pending approval"
+            onClick={() => setTab("payments")}
           />
           <QuickAction
             icon={FileText}

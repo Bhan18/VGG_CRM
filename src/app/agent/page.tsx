@@ -18,6 +18,7 @@ import { ContentTab } from "@/components/agent/content-tab";
 import { AttendanceTab } from "@/components/agent/attendance-tab";
 import { LeadsTab } from "@/components/agent/leads-tab";
 import { ProfileTab } from "@/components/agent/profile-tab";
+import { PaymentsTab } from "@/components/agent/payments-tab";
 import { CameraCapture } from "@/components/agent/camera-capture";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
@@ -218,6 +219,9 @@ export default function AgentPage() {
         )}
         {visited.has("leads") && (
           <div hidden={tab !== "leads"}><LeadsTab /></div>
+        )}
+        {visited.has("payments") && (
+          <div hidden={tab !== "payments"}><PaymentsTab /></div>
         )}
         {visited.has("profile") && (
           <div hidden={tab !== "profile"}><ProfileTab /></div>
