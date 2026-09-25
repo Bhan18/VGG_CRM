@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { getServerSupabase } from "./server-supabase";
 
 export async function getLogoUrl(): Promise<string | null> {
@@ -14,14 +16,24 @@ export async function getLogoUrl(): Promise<string | null> {
 
 export async function fetchLogoBuffer(): Promise<{ buffer: Buffer; contentType: string } | null> {
   const url = await getLogoUrl();
-  if (!url) return null;
+  if (url) {
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (res.ok) {
+        return {
+          buffer: Buffer.from(await res.arrayBuffer()),
+          contentType: res.headers.get("content-type") ?? "",
+        };
+      }
+    } catch {
+      /* fall through to local logo */
+    }
+  }
+  // Fallback: the bundled VGG logo (also used when branding was never
+  // configured in the database).
   try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return {
-      buffer: Buffer.from(await res.arrayBuffer()),
-      contentType: res.headers.get("content-type") ?? "",
-    };
+    const buffer = fs.readFileSync(path.join(process.cwd(), "public", "logo.svg"));
+    return { buffer, contentType: "image/svg+xml" };
   } catch {
     return null;
   }

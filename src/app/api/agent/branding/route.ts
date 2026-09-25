@@ -16,9 +16,9 @@ export interface BrandingResponse {
 }
 
 const DEFAULTS: BrandingResponse = {
-  app_name: "Agent",
+  app_name: "VGG",
   tagline: null,
-  logo_url: null,
+  logo_url: "/logo.svg",
 };
 
 // Short client cache + long shared cache so repeat app opens don't

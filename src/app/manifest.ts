@@ -4,8 +4,8 @@ import { getServerSupabase } from "@/lib/agent/server-supabase";
 export const dynamic = "force-dynamic";
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  let appName = "Agent";
-  let logoUrl: string | null = null;
+  let appName = "VGG";
+  let logoUrl: string | null = "/logo.svg";
 
   const sb = getServerSupabase();
   if (sb) {

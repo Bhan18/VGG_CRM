@@ -14,9 +14,9 @@ import { useQuery } from "@tanstack/react-query";
 import type { BrandingResponse } from "@/app/api/agent/branding/route";
 
 const DEFAULTS: BrandingResponse = {
-  app_name: "Agent",
+  app_name: "VGG",
   tagline: null,
-  logo_url: null,
+  logo_url: "/logo.svg",
 };
 
 export function useBranding() {
