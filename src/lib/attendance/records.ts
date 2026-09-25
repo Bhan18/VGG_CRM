@@ -575,6 +575,123 @@ export async function deleteRecord(id: string, ctx: AdminContext) {
   return { ok: true };
 }
 
+// ---- MANUAL RECORD (admin adds a missed punch) --------------------------
+// Lets an admin create a record for any past date (or today) when the
+// employee forgot to mark attendance. Times are ISO datetimes; status is
+// derived from them unless explicitly overridden. Audited.
+
+export type ManualRecordInput = {
+  employeeId: string;
+  date: string; // YYYY-MM-DD
+  checkIn?: string | null; // ISO datetime
+  checkOut?: string | null; // ISO datetime
+  status?: string;
+};
+
+const VALID_MANUAL_STATUS = [
+  "PRESENT",
+  "LATE",
+  "HALF_DAY",
+  "ABSENT",
+  "ON_LEAVE",
+  "CANCELLED",
+];
+
+export async function createManualRecord(
+  input: ManualRecordInput,
+  ctx: AdminContext,
+) {
+  const supabase = getAttendanceAdminClient();
+
+  const { data: employee, error: empError } = await supabase
+    .from("attendance_employees")
+    .select("id, status")
+    .eq("id", input.employeeId)
+    .single();
+  if (empError || !employee) throw new Error("Employee not found");
+  if (employee.status !== "ACTIVE") throw new Error("Employee is not active");
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+    throw new Error("Invalid date (expected YYYY-MM-DD)");
+  }
+  const settings = await getSettings();
+  const todayStr = dateStrInZone(settings.timezone);
+  if (input.date > todayStr) throw new Error("Cannot add records for future dates");
+
+  const { data: existing } = await supabase
+    .from("attendance_records")
+    .select("id")
+    .eq("employee_id", input.employeeId)
+    .eq("attendance_date", input.date)
+    .maybeSingle();
+  if (existing) throw new Error("A record already exists for this date — edit it instead");
+
+  const checkIn = input.checkIn ? new Date(input.checkIn) : null;
+  const checkOut = input.checkOut ? new Date(input.checkOut) : null;
+  if (input.checkIn && (!checkIn || Number.isNaN(checkIn.getTime()))) {
+    throw new Error("Invalid check-in time");
+  }
+  if (input.checkOut && (!checkOut || Number.isNaN(checkOut.getTime()))) {
+    throw new Error("Invalid check-out time");
+  }
+  if (checkIn && checkOut && checkOut.getTime() < checkIn.getTime()) {
+    throw new Error("Check-out cannot be before check-in");
+  }
+
+  let status: string;
+  if (input.status) {
+    if (!VALID_MANUAL_STATUS.includes(input.status)) {
+      throw new Error(`Invalid status: ${input.status}`);
+    }
+    status = input.status;
+  } else if (checkIn && checkOut) {
+    status = await computeStatus({ checkInTime: checkIn, checkOutTime: checkOut });
+  } else if (checkIn) {
+    status = await computeStatus({ checkInTime: checkIn });
+  } else {
+    throw new Error("Check-in time or status is required");
+  }
+
+  const now = new Date().toISOString();
+  const workingMinutes =
+    checkIn && checkOut
+      ? Math.round((checkOut.getTime() - checkIn.getTime()) / 60000)
+      : null;
+
+  const created = (await unwrapSingle(
+    supabase
+      .from("attendance_records")
+      .insert({
+        employee_id: input.employeeId,
+        attendance_date: input.date,
+        check_in_time: checkIn ? checkIn.toISOString() : null,
+        check_out_time: checkOut ? checkOut.toISOString() : null,
+        working_minutes: workingMinutes,
+        status,
+        marked_by: ctx.adminUserIdentifier,
+        updated_at: now,
+      })
+      .select("*")
+      .single(),
+  )) as AttendanceRecordRow;
+
+  await logAudit({
+    ctx,
+    action: "RECORD_CREATED",
+    entityType: "AttendanceRecord",
+    entityId: created.id,
+    newValue: {
+      employeeId: input.employeeId,
+      attendanceDate: input.date,
+      checkInTime: created.check_in_time,
+      checkOutTime: created.check_out_time,
+      status,
+    },
+  });
+
+  return created;
+}
+
 // ---- OVERVIEW / REPORTS -------------------------------------------------
 
 export type Overview = {
@@ -834,6 +951,7 @@ export async function getExportRows(opts: {
 // excluded everywhere.
 
 export type MonthlyDayRow = {
+  id: string | null; // record id (null when no record)
   date: string; // YYYY-MM-DD
   weekday: number; // 0 = Sunday .. 6
   status: string | null; // record status, or null when no record
@@ -1024,6 +1142,7 @@ export async function getMonthlyReport(opts: {
 
       const rec = byKey.get(`${e.id}|${dateStr}`);
       const row: MonthlyDayRow = {
+        id: rec?.id ?? null,
         date: dateStr,
         weekday,
         status: null,

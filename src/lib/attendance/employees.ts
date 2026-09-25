@@ -238,3 +238,38 @@ export async function setEmployeeStatus(
 ): Promise<AttendanceEmployeeRow> {
   return updateEmployee(id, { status }, ctx);
 }
+
+/**
+ * Hard-delete an employee. All dependent rows (attendance records, salary
+ * data, leaves, leads, resources) are `on delete cascade` in the schema,
+ * so they go with the employee. Audited.
+ */
+export async function deleteEmployee(
+  id: string,
+  ctx: AdminContext,
+): Promise<{ ok: true }> {
+  const supabase = getAttendanceAdminClient();
+  const old = await getEmployee(id);
+  if (!old) throw new Error("Employee not found");
+
+  const { error } = await supabase
+    .from("attendance_employees")
+    .delete()
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  await logAudit({
+    ctx,
+    action: "EMPLOYEE_DELETED",
+    entityType: "AttendanceEmployee",
+    entityId: id,
+    oldValue: {
+      employeeCode: old.employee_code,
+      name: old.name,
+      department: old.department,
+      role: old.role,
+    },
+  });
+
+  return { ok: true };
+}

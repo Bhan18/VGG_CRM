@@ -11,7 +11,9 @@ import {
   Loader2,
   Filter,
   MessageSquare,
+  Trash2,
 } from "lucide-react";
+import { ConfirmSheet } from "./employees-tab";
 
 interface LeaveRequest {
   id: string;
@@ -55,6 +57,8 @@ export function LeavesTab() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [remark, setRemark] = useState("");
   const [showRemarkFor, setShowRemarkFor] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<LeaveRequest | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const fetchLeaves = useCallback(async () => {
     setLoading(true);
@@ -86,6 +90,21 @@ export function LeavesTab() {
       setShowRemarkFor(null);
     } finally {
       setActionId(null);
+    }
+  }
+
+  async function onDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    try {
+      const res = await fetch(`/api/attendance/admin/leave?id=${deleting.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) return;
+      setItems((prev) => prev.filter((i) => i.id !== deleting.id));
+      setDeleting(null);
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -145,8 +164,7 @@ export function LeavesTab() {
                       <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold" style={{ color: meta.color, background: meta.bg }}>
                         {item.status}
                       </span>
-                    </div>
-                    <div className="mt-1 text-[11px] text-[var(--brand-ink)]/55">
+                    </div>                    <div className="mt-1 text-[11px] text-[var(--brand-ink)]/55">
                       {LEAVE_LABELS[item.leave_type] ?? item.leave_type} · {item.start_date} → {item.end_date} ({days} {days === 1 ? "day" : "days"})
                     </div>
                     <div className="mt-0.5 text-xs text-[var(--brand-ink)]/70">{item.reason}</div>
@@ -156,6 +174,14 @@ export function LeavesTab() {
                       </div>
                     )}
                   </div>
+                  <button
+                    onClick={() => setDeleting(item)}
+                    title="Delete request"
+                    className="agent-press flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
+                    style={{ background: "color-mix(in srgb, var(--brand-checkout) 8%, white)", color: "var(--brand-checkout)" }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
 
                 {/* Action buttons for PENDING */}
@@ -231,6 +257,17 @@ export function LeavesTab() {
             );
           })}
         </div>
+      )}
+
+      {deleting && (
+        <ConfirmSheet
+          title="Delete leave request?"
+          body={`Delete the ${LEAVE_LABELS[deleting.leave_type] ?? deleting.leave_type} request from ${deleting.employee?.name ?? "Unknown"} (${deleting.start_date} → ${deleting.end_date})? This cannot be undone.`}
+          confirmLabel="Delete"
+          busy={deleteBusy}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => void onDelete()}
+        />
       )}
     </div>
   );

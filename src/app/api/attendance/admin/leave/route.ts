@@ -92,3 +92,28 @@ export const PATCH = withAttendanceErrorHandler(async (req: NextRequest) => {
 
   return jsonNoCache({ item: data });
 }, "admin/leave PATCH");
+
+/**
+ * DELETE /api/attendance/admin/leave?id=...
+ * Delete a leave request.
+ */
+export const DELETE = withAttendanceErrorHandler(async (req: NextRequest) => {
+  const guard = await requireAdminSession(req);
+  if (!guard.authorized) return guard.response;
+
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) return errorResponse("id is required", 400);
+
+  const supabase = getAttendanceAdminClient();
+  const { error } = await supabase
+    .from("attendance_leave_requests")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("[admin/leave] delete error:", error.message);
+    return errorResponse("Could not delete leave request", 500);
+  }
+
+  return jsonNoCache({ ok: true });
+}, "admin/leave DELETE");

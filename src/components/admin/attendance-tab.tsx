@@ -23,8 +23,13 @@ import {
   UserX,
   Activity,
   AlertTriangle,
+  Pencil,
+  Trash2,
+  Plus,
+  Loader2,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAdminFetch } from "@/hooks/admin/use-admin-data";
 import {
   SkeletonList,
@@ -32,10 +37,12 @@ import {
   ErrorState,
   StatusPill,
 } from "@/components/agent/ui-primitives";
+import { ConfirmSheet } from "./employees-tab";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
 type MonthlyDay = {
+  id: string | null;
   date: string;
   weekday: number;
   status: string | null;
@@ -168,6 +175,9 @@ function MonthlyView() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"name" | "rate" | "absent" | "present">("name");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [recordDialog, setRecordDialog] = useState<RecordDialogState | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const params = new URLSearchParams({ month });
   if (department) params.set("department", department);
@@ -207,6 +217,27 @@ function MonthlyView() {
   const canGoNext = month < currentMonthStr();
   const selected = data?.employees.find((e) => e.id === selectedId) ?? null;
 
+  async function confirmDeleteRecord() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/attendance/admin/records?id=${deleteTarget.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(d?.error ?? "Could not delete record.");
+        return;
+      }
+      toast.success("Record deleted");
+      setDeleteTarget(null);
+      reload();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {/* Month navigator */}
@@ -237,6 +268,13 @@ function MonthlyView() {
           </button>
         </div>
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setRecordDialog({ mode: "add" })}
+            className="agent-press flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white"
+            style={{ background: "var(--brand-emerald)" }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Add
+          </button>
           <button
             onClick={() => setMonth(currentMonthStr())}
             className="agent-press rounded-lg px-2.5 py-1.5 text-xs font-medium"
@@ -295,7 +333,57 @@ function MonthlyView() {
         </div>
       )}
 
-      {selected && <DetailSheet employee={selected} monthLabel={monthLabel(month)} onClose={() => setSelectedId(null)} />}
+      {selected && (
+        <DetailSheet
+          employee={selected}
+          monthLabel={monthLabel(month)}
+          onClose={() => setSelectedId(null)}
+          onEditDay={(day) =>
+            setRecordDialog({
+              mode: "edit",
+              record: {
+                id: day.id!,
+                date: day.date,
+                checkIn: day.checkIn,
+                checkOut: day.checkOut,
+                status: day.status ?? "PRESENT",
+                employeeId: selected.id,
+                employeeName: selected.name,
+              },
+            })
+          }
+          onDeleteDay={(day) =>
+            day.id && setDeleteTarget({ id: day.id, label: `${selected.name} · ${fmtDate(day.date)}` })
+          }
+          onAddDay={(day) =>
+            setRecordDialog({
+              mode: "add",
+              record: {
+                id: null,
+                date: day.date,
+                checkIn: null,
+                checkOut: null,
+                status: "PRESENT",
+                employeeId: selected.id,
+                employeeName: selected.name,
+              },
+            })
+          }
+        />
+      )}
+      {recordDialog && (
+        <RecordDialog dialog={recordDialog} onClose={() => setRecordDialog(null)} onSaved={() => { setRecordDialog(null); reload(); }} />
+      )}
+      {deleteTarget && (
+        <ConfirmSheet
+          title="Delete record?"
+          body={`Delete the attendance record for ${deleteTarget.label}? This cannot be undone.`}
+          confirmLabel="Delete"
+          busy={deleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDeleteRecord}
+        />
+      )}
     </div>
   );
 }
@@ -546,10 +634,16 @@ function DetailSheet({
   employee: e,
   monthLabel,
   onClose,
+  onEditDay,
+  onDeleteDay,
+  onAddDay,
 }: {
   employee: MonthlyEmployee;
   monthLabel: string;
   onClose: () => void;
+  onEditDay: (day: MonthlyDay) => void;
+  onDeleteDay: (day: MonthlyDay) => void;
+  onAddDay: (day: MonthlyDay) => void;
 }) {
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -608,7 +702,13 @@ function DetailSheet({
 
         <div className="flex flex-col gap-1.5">
           {rows.map((d) => (
-            <DayRow key={d.date} day={d} />
+            <DayRow
+              key={d.date}
+              day={d}
+              onEdit={d.status ? () => onEditDay(d) : undefined}
+              onDelete={d.status && d.id ? () => onDeleteDay(d) : undefined}
+              onAdd={!d.status ? () => onAddDay(d) : undefined}
+            />
           ))}
         </div>
       </div>
@@ -629,7 +729,17 @@ function DaySummaryChip({ color, label, value }: { color: string; label: string;
   );
 }
 
-function DayRow({ day }: { day: MonthlyDay & { absent: boolean } }) {
+function DayRow({
+  day,
+  onEdit,
+  onDelete,
+  onAdd,
+}: {
+  day: MonthlyDay & { absent: boolean };
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onAdd?: () => void;
+}) {
   const dt = new Date(`${day.date}T00:00:00`);
   // Past day with a check-in but no check-out → auto-closed as half-day.
   const missingCheckout = !!day.checkIn && !day.checkOut && day.date < todayStr();
@@ -669,8 +779,241 @@ function DayRow({ day }: { day: MonthlyDay & { absent: boolean } }) {
           {day.checkOutPhoto && <PhotoThumb path={day.checkOutPhoto} label="Out" />}
         </div>
       )}
+
+      <div className="flex flex-shrink-0 items-center gap-1">
+        {onAdd && (
+          <button
+            onClick={onAdd}
+            title="Add record for this day"
+            className="agent-press flex h-7 w-7 items-center justify-center rounded-lg"
+            style={{ background: "color-mix(in srgb, var(--brand-emerald) 10%, white)", color: "var(--brand-emerald)" }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            title="Edit record"
+            className="agent-press flex h-7 w-7 items-center justify-center rounded-lg bg-black/5 text-black/60"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            title="Delete record"
+            className="agent-press flex h-7 w-7 items-center justify-center rounded-lg"
+            style={{ background: "color-mix(in srgb, var(--brand-checkout) 8%, white)", color: "var(--brand-checkout)" }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
     </div>
   );
+}
+
+// ─── Record add / edit dialog ────────────────────────────────────────────
+
+type RecordDialogState = {
+  mode: "add" | "edit";
+  record?: {
+    id: string | null;
+    date: string;
+    checkIn: string | null;
+    checkOut: string | null;
+    status: string;
+    employeeId?: string;
+    employeeName?: string;
+  };
+};
+
+function useEmployeeOptions() {
+  const { data } = useAdminFetch<{
+    employees: { id: string; employeeCode: string; name: string }[];
+  }>("/api/attendance/admin/employees");
+  return data?.employees ?? [];
+}
+
+function RecordDialog({
+  dialog,
+  onClose,
+  onSaved,
+}: {
+  dialog: RecordDialogState;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const employees = useEmployeeOptions();
+  const preset = dialog.record;
+  const [employeeId, setEmployeeId] = useState(preset?.employeeId ?? "");
+  const [date, setDate] = useState(preset?.date ?? todayStr());
+  const [checkIn, setCheckIn] = useState(isoToLocalInput(preset?.checkIn ?? null));
+  const [checkOut, setCheckOut] = useState(isoToLocalInput(preset?.checkOut ?? null));
+  const [status, setStatus] = useState(dialog.mode === "edit" ? (preset?.status ?? "AUTO") : "AUTO");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const needPicker = dialog.mode === "add" && !preset?.employeeId;
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setError(null);
+    const empId = preset?.employeeId ?? employeeId;
+    if (!empId) {
+      setError("Select an employee.");
+      return;
+    }
+    if (!date) {
+      setError("Select a date.");
+      return;
+    }
+    const inIso = localInputToIso(checkIn);
+    const outIso = localInputToIso(checkOut);
+    if (checkIn && !inIso) {
+      setError("Invalid check-in time.");
+      return;
+    }
+    if (checkOut && !outIso) {
+      setError("Invalid check-out time.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const url = "/api/attendance/admin/records";
+      const res = await fetch(url, {
+        method: dialog.mode === "add" ? "POST" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(
+          dialog.mode === "add"
+            ? {
+                employeeId: empId,
+                date,
+                checkIn: inIso,
+                checkOut: outIso,
+                ...(status !== "AUTO" ? { status } : {}),
+              }
+            : {
+                id: preset!.id,
+                attendanceDate: date,
+                checkInTime: inIso,
+                checkOutTime: outIso,
+                ...(status !== "AUTO" && status !== preset?.status ? { status } : {}),
+              },
+        ),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d?.error ?? "Could not save record.");
+        return;
+      }
+      toast.success(dialog.mode === "add" ? "Record added" : "Record updated");
+      onSaved();
+    } catch {
+      setError("Network error.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={onClose}>
+      <form
+        onSubmit={onSubmit}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-t-2xl bg-white p-4 sm:rounded-2xl"
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-sm font-semibold">
+            {dialog.mode === "add" ? "Add attendance record" : "Edit attendance record"}
+            {preset?.employeeName && (
+              <span className="ml-1 font-normal text-[var(--brand-ink)]/55">· {preset.employeeName}</span>
+            )}
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {needPicker && (
+          <div className="mb-3 flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-[var(--brand-ink)]/70">Employee *</label>
+            <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className={dialogInputCls}>
+              <option value="">Select employee</option>
+              {employees.map((o) => (
+                <option key={o.id} value={o.id}>{o.name} · {o.employeeCode}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-[var(--brand-ink)]/70">Date *</label>
+            <input type="date" value={date} max={todayStr()} onChange={(e) => setDate(e.target.value)} className={dialogInputCls} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-[var(--brand-ink)]/70">Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className={dialogInputCls}>
+              <option value="AUTO">{dialog.mode === "add" ? "Auto (from times)" : "Keep / auto"}</option>
+              {STATUS_ORDER.map((s) => (
+                <option key={s} value={s}>{s.replace("_", " ")}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-[var(--brand-ink)]/70">Check-in</label>
+            <input type="datetime-local" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className={dialogInputCls} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-[var(--brand-ink)]/70">Check-out</label>
+            <input type="datetime-local" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className={dialogInputCls} />
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-3 rounded-lg px-3 py-2 text-xs font-medium" style={{ background: "color-mix(in srgb, var(--brand-checkout) 8%, white)", color: "var(--brand-checkout)" }}>
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="agent-press mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          style={{ background: "var(--brand-emerald)" }}
+        >
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+          {busy ? "Saving..." : dialog.mode === "add" ? "Add record" : "Save changes"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+const dialogInputCls =
+  "w-full rounded-xl border border-[color-mix(in_srgb,var(--brand-emerald)_15%,#e5e0d4)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-emerald)]";
+
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function localInputToIso(v: string): string | null {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 // ─── Day view (raw records table) ────────────────────────────────────────
@@ -681,6 +1024,9 @@ function DayRecordsView() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
+  const [recordDialog, setRecordDialog] = useState<RecordDialogState | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const params = new URLSearchParams();
   if (employeeId) params.set("employeeId", employeeId);
@@ -695,8 +1041,38 @@ function DayRecordsView() {
     [employeeId, status, dateFrom, dateTo, page],
   );
 
+  async function confirmDeleteRecord() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/attendance/admin/records?id=${deleteTarget.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(d?.error ?? "Could not delete record.");
+        return;
+      }
+      toast.success("Record deleted");
+      setDeleteTarget(null);
+      reload();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => setRecordDialog({ mode: "add" })}
+          className="agent-press flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold text-white"
+          style={{ background: "var(--brand-emerald)" }}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add record
+        </button>
+      </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <input
           value={employeeId}
@@ -747,7 +1123,7 @@ function DayRecordsView() {
               </span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[780px] text-left text-xs">
+              <table className="w-full min-w-[860px] text-left text-xs">
                 <thead>
                   <tr className="text-[10px] uppercase tracking-wider text-[var(--brand-ink)]/50">
                     <th className="px-4 py-2 font-medium">Employee</th>
@@ -757,7 +1133,8 @@ function DayRecordsView() {
                     <th className="px-2 py-2 font-medium">Hours</th>
                     <th className="px-2 py-2 font-medium">Reason</th>
                     <th className="px-2 py-2 font-medium">Photos</th>
-                    <th className="px-4 py-2 text-right font-medium">Status</th>
+                    <th className="px-2 py-2 font-medium">Status</th>
+                    <th className="px-4 py-2 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -792,7 +1169,44 @@ function DayRecordsView() {
                           {r.check_out_photo ? <PhotoThumb path={r.check_out_photo} label="Out" /> : <span className="text-[var(--brand-ink)]/30">—</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-right"><StatusPill status={r.status} /></td>
+                      <td className="px-2 py-2.5 text-right"><StatusPill status={r.status} /></td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() =>
+                              setRecordDialog({
+                                mode: "edit",
+                                record: {
+                                  id: r.id,
+                                  date: r.attendance_date.slice(0, 10),
+                                  checkIn: r.check_in_time,
+                                  checkOut: r.check_out_time,
+                                  status: r.status,
+                                  employeeId: r.attendance_employees.id,
+                                  employeeName: r.attendance_employees.name,
+                                },
+                              })
+                            }
+                            title="Edit record"
+                            className="agent-press flex h-7 w-7 items-center justify-center rounded-lg bg-black/5 text-black/60"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              setDeleteTarget({
+                                id: r.id,
+                                label: `${r.attendance_employees.name} · ${fmtDate(r.attendance_date)}`,
+                              })
+                            }
+                            title="Delete record"
+                            className="agent-press flex h-7 w-7 items-center justify-center rounded-lg"
+                            style={{ background: "color-mix(in srgb, var(--brand-checkout) 8%, white)", color: "var(--brand-checkout)" }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -822,6 +1236,20 @@ function DayRecordsView() {
             </div>
           )}
         </>
+      )}
+
+      {recordDialog && (
+        <RecordDialog dialog={recordDialog} onClose={() => setRecordDialog(null)} onSaved={() => { setRecordDialog(null); reload(); }} />
+      )}
+      {deleteTarget && (
+        <ConfirmSheet
+          title="Delete record?"
+          body={`Delete the attendance record for ${deleteTarget.label}? This cannot be undone.`}
+          confirmLabel="Delete"
+          busy={deleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDeleteRecord}
+        />
       )}
     </div>
   );

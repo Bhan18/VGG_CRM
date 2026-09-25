@@ -13,6 +13,8 @@ import {
   LogOut,
   Shield,
   Settings,
+  Target,
+  Newspaper,
 } from "lucide-react";
 import { useAgentAuth } from "@/hooks/agent/use-agent-auth";
 import { useBranding } from "@/hooks/agent/use-branding";
@@ -22,9 +24,11 @@ import { AttendanceTab } from "./attendance-tab";
 import { SalaryTab } from "./salary-tab";
 import { EmployeesTab } from "./employees-tab";
 import { LeavesTab } from "./leaves-tab";
+import { LeadsAdminTab } from "./leads-tab";
+import { ContentAdminTab } from "./content-tab";
 import { SettingsTab } from "./settings-tab";
 
-type AdminTab = "overview" | "attendance" | "leaves" | "salary" | "employees" | "settings";
+type AdminTab = "overview" | "attendance" | "leaves" | "salary" | "employees" | "leads" | "content" | "settings";
 
 const TABS: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -32,6 +36,8 @@ const TABS: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "leaves", label: "Leaves", icon: CalendarOff },
   { id: "salary", label: "Salary", icon: Banknote },
   { id: "employees", label: "Employees", icon: Users },
+  { id: "leads", label: "Leads", icon: Target },
+  { id: "content", label: "Content", icon: Newspaper },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -119,6 +125,8 @@ export function AdminDashboard() {
         {tab === "leaves" && <LeavesTab />}
         {tab === "salary" && <SalaryTab />}
         {tab === "employees" && <EmployeesTab />}
+        {tab === "leads" && <LeadsAdminTab />}
+        {tab === "content" && <ContentAdminTab />}
         {tab === "settings" && <SettingsTab />}
       </main>
     </div>
