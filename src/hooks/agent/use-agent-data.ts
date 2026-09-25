@@ -21,7 +21,7 @@ async function jsonOrThrow(res: Response) {
     let msg = `Request failed (${res.status})`;
     try {
       const body = await res.json();
-      if (body?.error) msg = body.error;
+      if (body?.error) msg = body.detail ? `${body.error} (${body.detail})` : body.error;
     } catch {
       /* ignore */
     }

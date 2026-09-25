@@ -52,7 +52,8 @@ export async function GET(req: NextRequest) {
     .not("customer_id", "is", null)
     .order("plot_number", { ascending: true });
   if (plotErr) {
-    return NextResponse.json({ error: "Could not load customers." }, { status: 500 });
+    console.error("[bm/customers] plots error:", plotErr.message);
+    return NextResponse.json({ error: "Could not load customers.", detail: plotErr.message }, { status: 500 });
   }
 
   const rows = (plots ?? []) as PlotRow[];
@@ -85,7 +86,12 @@ export async function GET(req: NextRequest) {
   ]);
 
   const paidByPlot = new Map<string, number>();
-  for (const pay of (payRes.data ?? []) as { plot_id: string; amount: number }[]) {
+  const payRows = (payRes.data ?? []) as { plot_id: string; amount: number }[];
+  if (payRes.error) {
+    console.error("[bm/customers] payments error:", payRes.error.message);
+    return NextResponse.json({ error: "Could not load customers.", detail: payRes.error.message }, { status: 500 });
+  }
+  for (const pay of payRows) {
     paidByPlot.set(pay.plot_id, (paidByPlot.get(pay.plot_id) ?? 0) + (pay.amount || 0));
   }
   const discountByBooking = new Map(((bookRes.data ?? []) as { id: string; discount: number }[]).map((b) => [b.id, b.discount ?? 0]));
