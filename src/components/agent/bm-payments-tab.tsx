@@ -17,12 +17,14 @@ import {
   ImageIcon,
   ChevronLeft,
   Wallet,
+  Camera,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  useBmPlots,
+  useBmCustomers,
   useBmPayments,
   useRecordBmPayment,
+  type BmCustomer,
   type BmPlotOption,
   type BmRecording,
 } from "@/hooks/agent/use-agent-data";
@@ -40,7 +42,7 @@ const inputCls =
   "rounded-xl border border-[color-mix(in_srgb,var(--brand-emerald)_15%,#e5e0d4)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-emerald)]";
 
 export function BmPaymentsTab() {
-  const plotsQ = useBmPlots(true);
+  const customersQ = useBmCustomers(true);
   const paysQ = useBmPayments(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,8 +72,8 @@ export function BmPaymentsTab() {
 
       {showForm && (
         <RecordForm
-          plots={plotsQ.data ?? []}
-          plotsLoading={plotsQ.isLoading}
+          customers={customersQ.data ?? []}
+          customersLoading={customersQ.isLoading}
           onDone={() => setShowForm(false)}
         />
       )}
@@ -157,9 +159,96 @@ export function BmPaymentsTab() {
   );
 }
 
-function RecordForm({ plots, plotsLoading, onDone }: { plots: BmPlotOption[]; plotsLoading: boolean; onDone: () => void }) {
+function CustomerPicker({
+  customers,
+  onPick,
+  onClose,
+}: {
+  customers: BmCustomer[];
+  onPick: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const query = q.trim().toLowerCase();
+  const filtered = query
+    ? customers.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          (c.phone ?? "").includes(query) ||
+          c.plots.some((p) => p.plotNumber.toLowerCase().includes(query)),
+      )
+    : customers;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-white">
+      <header className="flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 12%, #e5e0d4)" }}>
+        <button onClick={onClose} className="agent-press rounded-lg p-1.5" aria-label="Close">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <div className="text-sm font-semibold">Select customer</div>
+      </header>
+      <div className="border-b px-4 py-2" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 8%, #e5e0d4)" }}>
+        <input
+          autoFocus
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search name, phone, or plot no."
+          className="w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-emerald)]"
+          style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 15%, #e5e0d4)" }}
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-2" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}>
+        {filtered.length === 0 ? (
+          <div className="py-10 text-center text-xs text-[var(--brand-ink)]/40">No customers match.</div>
+        ) : (
+          filtered.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onPick(c.id)}
+              className="agent-press flex w-full items-center gap-3 border-b py-3 text-left"
+              style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 8%, transparent)" }}
+            >
+              <div
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                style={{ background: "var(--brand-emerald)" }}
+              >
+                {initials(c.name)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">{c.name}</div>
+                <div className="truncate text-[11px] text-[var(--brand-ink)]/55">
+                  {c.phone ? `${c.phone} · ` : ""}Plot {c.plots.map((p) => p.plotNumber).join(", ")}
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <div
+                  className="text-xs font-semibold tabular-nums"
+                  style={{ color: c.totalOutstanding > 0 ? "var(--brand-checkout)" : "var(--brand-emerald)" }}
+                >
+                  {c.totalOutstanding > 0 ? inrCompact(c.totalOutstanding) : "Cleared"}
+                </div>
+                <div className="text-[10px] text-[var(--brand-ink)]/45">due</div>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function initials(name: string): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
+function RecordForm({ customers, customersLoading, onDone }: { customers: BmCustomer[]; customersLoading: boolean; onDone: () => void }) {
   const record = useRecordBmPayment();
+  const [customerId, setCustomerId] = useState("");
   const [plotId, setPlotId] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [mode, setMode] = useState("cash");
@@ -171,8 +260,19 @@ function RecordForm({ plots, plotsLoading, onDone }: { plots: BmPlotOption[]; pl
   const [proofs, setProofs] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const plot = plots.find((p) => p.id === plotId) ?? null;
+  const customer = customers.find((c) => c.id === customerId) ?? null;
+  const plot: BmPlotOption | null =
+    customer?.plots.find((p) => p.id === plotId) ?? customer?.plots[0] ?? null;
+  const effectivePlotId = plot?.id ?? "";
   const today = new Date().toISOString().slice(0, 10);
+
+  function pickCustomer(id: string) {
+    setCustomerId(id);
+    // Single-plot customers skip plot selection entirely.
+    const c = customers.find((x) => x.id === id);
+    setPlotId(c && c.plots.length === 1 ? (c.plots[0]?.id ?? "") : "");
+    setShowPicker(false);
+  }
 
   async function addProofs(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -203,7 +303,11 @@ function RecordForm({ plots, plotsLoading, onDone }: { plots: BmPlotOption[]; pl
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!plotId) {
+    if (!customer) {
+      toast.error("Select a customer.");
+      return;
+    }
+    if (!effectivePlotId) {
       toast.error("Select a plot.");
       return;
     }
@@ -214,7 +318,7 @@ function RecordForm({ plots, plotsLoading, onDone }: { plots: BmPlotOption[]; pl
     }
     try {
       await record.mutateAsync({
-        plotId,
+        plotId: effectivePlotId,
         date,
         amount: amt,
         paymentMode: mode,
@@ -236,16 +340,65 @@ function RecordForm({ plots, plotsLoading, onDone }: { plots: BmPlotOption[]; pl
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 rounded-xl border p-3" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 15%, #e5e0d4)", background: "color-mix(in srgb, var(--brand-emerald) 3%, white)" }}>
-      <Field label="Plot *">
-        <select value={plotId} onChange={(e) => setPlotId(e.target.value)} className={inputCls} disabled={plotsLoading}>
-          <option value="">{plotsLoading ? "Loading plots..." : "Select plot"}</option>
-          {plots.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.plotNumber}{p.block ? ` · ${p.block}` : ""}{p.customerName ? ` · ${p.customerName}` : ""} · Bal {inrCompact(p.balance)}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-[var(--brand-ink)]/70">Customer *</span>
+        <button
+          type="button"
+          onClick={() => setShowPicker(true)}
+          className="agent-press flex items-center justify-between gap-2 rounded-xl border bg-white px-3 py-2.5 text-left text-sm"
+          style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 15%, #e5e0d4)" }}
+        >
+          {customer ? (
+            <span className="min-w-0">
+              <span className="block truncate font-medium">{customer.name}</span>
+              <span className="block truncate text-[11px] text-[var(--brand-ink)]/50">
+                {customer.plots.map((p) => p.plotNumber).join(", ")} · Due {inrCompact(customer.totalOutstanding)}
+              </span>
+            </span>
+          ) : (
+            <span className="text-[var(--brand-ink)]/40">
+              {customersLoading ? "Loading customers..." : "Select customer"}
+            </span>
+          )}
+          <ChevronLeft className="h-4 w-4 rotate-180 text-[var(--brand-ink)]/40" />
+        </button>
+      </div>
+
+      {showPicker && (
+        <CustomerPicker
+          customers={customers}
+          onPick={pickCustomer}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {customer && customer.plots.length > 1 && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-[var(--brand-ink)]/70">Plot *</span>
+          <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+            {customer.plots.map((p) => {
+              const active = effectivePlotId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPlotId(p.id)}
+                  className="agent-press shrink-0 rounded-xl border px-3 py-2 text-left"
+                  style={{
+                    borderColor: active ? "var(--brand-emerald)" : "color-mix(in srgb, var(--brand-emerald) 15%, #e5e0d4)",
+                    background: active ? "color-mix(in srgb, var(--brand-emerald) 8%, white)" : "#fff",
+                  }}
+                >
+                  <div className="text-xs font-semibold">Plot {p.plotNumber}</div>
+                  <div className="text-[10px] tabular-nums" style={{ color: "var(--brand-checkout)" }}>
+                    Due {inrCompact(p.balance)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {plot && (
         <div className="grid grid-cols-3 gap-2 rounded-xl bg-white p-2.5 text-center" style={{ border: "1px solid color-mix(in srgb, var(--brand-emerald) 12%, #e5e0d4)" }}>
@@ -313,18 +466,32 @@ function RecordForm({ plots, plotsLoading, onDone }: { plots: BmPlotOption[]; pl
             </div>
           ))}
           {proofs.length < 3 && (
-            <label className="agent-press flex h-16 w-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-[var(--brand-ink)]/40" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 25%, #e5e0d4)" }}>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => { void addProofs(e.target.files); e.target.value = ""; }}
-              />
-              {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-              <span className="text-[9px]">{uploading ? "..." : "Photo"}</span>
-            </label>
+            <div className="flex gap-2">
+              <label className="agent-press flex h-16 w-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-[var(--brand-ink)]/40" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 25%, #e5e0d4)" }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => { void addProofs(e.target.files); e.target.value = ""; }}
+                />
+                {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+                <span className="text-[9px]">{uploading ? "..." : "Camera"}</span>
+              </label>
+              <label className="agent-press flex h-16 w-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-[var(--brand-ink)]/40" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 25%, #e5e0d4)" }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => { void addProofs(e.target.files); e.target.value = ""; }}
+                />
+                {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
+                <span className="text-[9px]">{uploading ? "..." : "Gallery"}</span>
+              </label>
+            </div>
           )}
         </div>
         <span className="text-[10px] text-[var(--brand-ink)]/45">Receipt / screenshot / challan — up to 3</span>

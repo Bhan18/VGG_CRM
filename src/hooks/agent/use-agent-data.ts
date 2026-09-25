@@ -262,22 +262,28 @@ export interface BmPlotOption {
   plotNumber: string;
   block: string | null;
   status: string;
+  projectName: string | null;
   totalPrice: number;
   paid: number;
   balance: number;
-  customerId: string | null;
-  customerName: string | null;
-  customerPhone: string | null;
   bookingId: string | null;
   saleId: string | null;
-  projectName: string | null;
 }
 
-export function useBmPlots(enabled: boolean) {
-  return useQuery<BmPlotOption[]>({
-    queryKey: ["agent", "bm", "plots"],
+export interface BmCustomer {
+  id: string;
+  name: string;
+  phone: string | null;
+  totalOutstanding: number;
+  totalPaid: number;
+  plots: BmPlotOption[];
+}
+
+export function useBmCustomers(enabled: boolean) {
+  return useQuery<BmCustomer[]>({
+    queryKey: ["agent", "bm", "customers"],
     queryFn: async () => {
-      const res = await fetch("/api/bm/plots", { credentials: "include" });
+      const res = await fetch("/api/bm/customers", { credentials: "include" });
       const data = await jsonOrThrow(res);
       return Array.isArray(data?.items) ? data.items : [];
     },
@@ -350,7 +356,7 @@ export function useRecordBmPayment() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agent", "bm", "payments"] });
-      qc.invalidateQueries({ queryKey: ["agent", "bm", "plots"] });
+      qc.invalidateQueries({ queryKey: ["agent", "bm", "customers"] });
     },
   });
 }

@@ -5,9 +5,10 @@ import { getServerSupabase } from "@/lib/agent/server-supabase";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// GET /api/bm/plots — plots a Branch Manager can record payments against
-// (booked / reserved / sold), with customer + approved-paid + balance.
-// Balance mirrors the admin app's outstanding math (discounts included).
+// GET /api/bm/customers — every customer holding a recordable plot
+// (booked / reserved / sold), with their plots, per-plot paid/balance and
+// total outstanding. Sorted by outstanding descending so the biggest dues
+// surface first. Balance math mirrors the admin app (discounts included).
 
 type PlotRow = {
   id: string;
@@ -19,7 +20,6 @@ type PlotRow = {
   booking_id: string | null;
   sale_id: string | null;
   project_id: string | null;
-  layout_id: string | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -31,11 +31,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Service not configured." }, { status: 503 });
   }
 
-  const [{ data: plots, error: plotErr }] = await Promise.all([
-    sb.from("plots").select("*").in("status", ["booked", "reserved", "sold"]).order("plot_number", { ascending: true }),
-  ]);
+  const { data: plots, error: plotErr } = await sb
+    .from("plots")
+    .select("*")
+    .in("status", ["booked", "reserved", "sold"])
+    .not("customer_id", "is", null)
+    .order("plot_number", { ascending: true });
   if (plotErr) {
-    return NextResponse.json({ error: "Could not load plots." }, { status: 500 });
+    return NextResponse.json({ error: "Could not load customers." }, { status: 500 });
   }
 
   const rows = (plots ?? []) as PlotRow[];
@@ -50,7 +53,7 @@ export async function GET(req: NextRequest) {
       ? sb.from("payments").select("plot_id, amount").in("plot_id", plotIds).eq("status", "approved")
       : Promise.resolve({ data: [] as { plot_id: string; amount: number }[] }),
     customerIds.length
-      ? sb.from("customers").select("id, name, phone").in("id", customerIds)
+      ? sb.from("customers").select("id, name, phone").in("id", customerIds).order("name", { ascending: true })
       : Promise.resolve({ data: [] as { id: string; name: string; phone: string }[] }),
     bookingIds.length
       ? sb.from("bookings").select("id, discount").in("id", bookingIds)
@@ -67,37 +70,47 @@ export async function GET(req: NextRequest) {
   for (const pay of (payRes.data ?? []) as { plot_id: string; amount: number }[]) {
     paidByPlot.set(pay.plot_id, (paidByPlot.get(pay.plot_id) ?? 0) + (pay.amount || 0));
   }
-  const custById = new Map(((custRes.data ?? []) as { id: string; name: string; phone: string }[]).map((c) => [c.id, c]));
   const discountByBooking = new Map(((bookRes.data ?? []) as { id: string; discount: number }[]).map((b) => [b.id, b.discount ?? 0]));
   const discountBySale = new Map(((saleRes.data ?? []) as { id: string; discount: number }[]).map((s) => [s.id, s.discount ?? 0]));
   const projectById = new Map(((projRes.data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
 
-  const items = rows.map((p) => {
-    const paid = paidByPlot.get(p.id) ?? 0;
-    let owed = p.total_price ?? 0;
-    if (p.sale_id && discountBySale.has(p.sale_id)) owed -= discountBySale.get(p.sale_id)!;
-    else if (p.booking_id && discountByBooking.has(p.booking_id)) owed -= discountByBooking.get(p.booking_id)!;
-    owed = Math.max(0, owed);
-    const customer = p.customer_id ? custById.get(p.customer_id) ?? null : null;
+  const customers = ((custRes.data ?? []) as { id: string; name: string; phone: string }[]).map((c) => {
+    const cPlots = rows
+      .filter((p) => p.customer_id === c.id)
+      .map((p) => {
+        const paid = paidByPlot.get(p.id) ?? 0;
+        let owed = p.total_price ?? 0;
+        if (p.sale_id && discountBySale.has(p.sale_id)) owed -= discountBySale.get(p.sale_id)!;
+        else if (p.booking_id && discountByBooking.has(p.booking_id)) owed -= discountByBooking.get(p.booking_id)!;
+        owed = Math.max(0, owed);
+        return {
+          id: p.id,
+          plotNumber: p.plot_number,
+          block: p.block,
+          status: p.status,
+          projectName: p.project_id ? (projectById.get(p.project_id) ?? null) : null,
+          totalPrice: p.total_price ?? 0,
+          paid,
+          balance: Math.max(0, owed - paid),
+          bookingId: p.booking_id,
+          saleId: p.sale_id,
+        };
+      });
+    const totalOutstanding = cPlots.reduce((s, p) => s + p.balance, 0);
     return {
-      id: p.id,
-      plotNumber: p.plot_number,
-      block: p.block,
-      status: p.status,
-      totalPrice: p.total_price ?? 0,
-      paid,
-      balance: Math.max(0, owed - paid),
-      customerId: p.customer_id,
-      customerName: customer?.name ?? null,
-      customerPhone: customer?.phone ?? null,
-      bookingId: p.booking_id,
-      saleId: p.sale_id,
-      projectName: p.project_id ? (projectById.get(p.project_id) ?? null) : null,
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+      totalOutstanding,
+      totalPaid: cPlots.reduce((s, p) => s + p.paid, 0),
+      plots: cPlots,
     };
   });
 
+  customers.sort((a, b) => b.totalOutstanding - a.totalOutstanding);
+
   return NextResponse.json(
-    { items },
+    { items: customers },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
