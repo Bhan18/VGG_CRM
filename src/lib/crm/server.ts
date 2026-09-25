@@ -28,9 +28,10 @@ export async function getStaffFromCrmRequest(req: Request) {
 
 export function isBranchManagerRole(role: string | null | undefined) {
   if (!role) return false;
-  const r = role.toLowerCase();
-  // Accept BRANCH_MANAGER, Branch Head variants, ADMIN, sales_manager
-  return r.includes("branch") || r === "admin" || r === "branch_manager" || r === "sales_manager" || r.includes("manager");
+  const r = role.toLowerCase().trim();
+  if (r === "bm") return true;
+  // Accept BRANCH_MANAGER, Branch Head variants, ADMIN, sales_manager, "Branch Manager" with space
+  return r.includes("branch") || r === "admin" || r === "branch_manager" || r === "branch manager" || r === "sales_manager" || r.includes("manager");
 }
 
 export function requireStaffOrThrow(employee: unknown, requireBm = false) {

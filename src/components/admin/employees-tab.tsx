@@ -309,6 +309,8 @@ export function EmployeesTab() {
   );
 }
 
+const PRESET_ROLES = ["Staff", "ADMIN", "BRANCH_MANAGER"] as const;
+
 function EmployeeForm({
   title,
   employee,
@@ -327,8 +329,10 @@ function EmployeeForm({
   const [name, setName] = useState(employee?.name ?? "");
   const [phone, setPhone] = useState(employee?.phone ?? "");
   const [department, setDepartment] = useState(employee?.department ?? "");
-  const [jobRole, setJobRole] = useState(employee && employee.role !== "ADMIN" ? employee.role : "");
-  const [isAdmin, setIsAdmin] = useState(employee?.role === "ADMIN");
+  // Unified role state: preset or custom. Replaces old isAdmin+jobRole split which required typing BRANCH_MANAGER manually.
+  const initialIsPreset = !employee || (["Staff", "ADMIN", "BRANCH_MANAGER"] as string[]).includes(employee.role);
+  const [rolePreset, setRolePreset] = useState<string>(employee?.role && (["Staff", "ADMIN", "BRANCH_MANAGER"] as string[]).includes(employee.role) ? employee.role : (employee?.role ? "__custom" : "Staff"));
+  const [customRole, setCustomRole] = useState<string>(employee && !initialIsPreset ? employee.role : "");
   const [password, setPassword] = useState("");
   const [photo, setPhoto] = useState<string | null>(employee?.profilePhoto ?? null);
   const [busy, setBusy] = useState(false);
@@ -348,7 +352,12 @@ function EmployeeForm({
     }
     setBusy(true);
     try {
-      const role = isAdmin ? "ADMIN" : jobRole.trim() || "Staff";
+      const role = rolePreset === "__custom" ? (customRole.trim() || "Staff") : rolePreset;
+      if (isSelf && employee?.role === "ADMIN" && role !== "ADMIN") {
+        setError("You cannot remove your own admin access.");
+        setBusy(false);
+        return;
+      }
       const res = await fetch("/api/attendance/admin/employees", {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -435,21 +444,30 @@ function EmployeeForm({
             <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Construction" className={inputCls} />
           </Field>
           <Field label="Job role">
-            <input value={jobRole} onChange={(e) => setJobRole(e.target.value)} placeholder="Site Engineer" disabled={isAdmin} className={`${inputCls} disabled:opacity-50`} />
+            <input value={customRole} onChange={(e) => setCustomRole(e.target.value)} placeholder="Site Engineer" className={inputCls} style={{ display: rolePreset === "__custom" ? undefined : "none" }} />
+            <select
+              value={rolePreset}
+              onChange={(e) => setRolePreset(e.target.value)}
+              className={inputCls}
+              style={{ display: rolePreset === "__custom" ? "none" : undefined }}
+              disabled={isSelf && employee?.role === "ADMIN"}
+            >
+              <option value="Staff">Staff — attendance & leads</option>
+              <option value="BRANCH_MANAGER">Branch Manager — staff app + Payments tab</option>
+              <option value="ADMIN">Administrator — full dashboard</option>
+              <option value="__custom">Custom job title…</option>
+            </select>
           </Field>
         </div>
-
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs font-medium">
-          <input
-            type="checkbox"
-            checked={isAdmin}
-            disabled={isSelf}
-            onChange={(e) => setIsAdmin(e.target.checked)}
-            className="h-4 w-4 accent-[var(--brand-emerald)]"
-          />
-          Administrator access (full dashboard)
-          {isSelf && <span className="font-normal text-[var(--brand-ink)]/45">(your own access can't be removed)</span>}
-        </label>
+        {rolePreset === "__custom" && (
+          <button type="button" onClick={() => setRolePreset("Staff")} className="mt-1 text-xs font-medium" style={{ color: "var(--brand-emerald)" }}>← Back to presets</button>
+        )}
+        {rolePreset === "BRANCH_MANAGER" && (
+          <p className="mt-1 text-xs" style={{ color: "color-mix(in srgb, var(--brand-emerald) 70%, transparent)" }}>Branch Managers record payments from the staff app (pending admin approval).</p>
+        )}
+        {isSelf && employee?.role === "ADMIN" && (
+          <p className="mt-1 text-xs text-[var(--brand-ink)]/45">Your own admin access can't be removed.</p>
+        )}
 
         <div className="mt-3">
           <Field label={isEdit ? "New password (blank = keep current)" : "Password (optional)"}>
