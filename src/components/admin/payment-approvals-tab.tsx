@@ -235,27 +235,23 @@ export function PaymentApprovalsTab() {
       {recent.length > 0 && (
         <div>
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--brand-ink)]/50">
-            Recently decided
+            Recently approved (BM)
           </div>
           <div className="flex flex-col gap-1.5">
             {recent.slice(0, 20).map((p) => (
               <div key={p.id} className="flex items-center gap-3 rounded-xl border px-3 py-2" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 10%, #e5e0d4)" }}>
                 <span
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                  style={
-                    p.status === "approved"
-                      ? { background: "color-mix(in srgb, var(--brand-emerald) 12%, white)", color: "var(--brand-emerald)" }
-                      : { background: "color-mix(in srgb, var(--brand-checkout) 8%, white)", color: "var(--brand-checkout)" }
-                  }
+                  style={{ background: "color-mix(in srgb, var(--brand-emerald) 12%, white)", color: "var(--brand-emerald)" }}
                 >
-                  {p.status === "approved" ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                  <CheckCircle2 className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xs font-semibold tabular-nums">
                     {inr(p.amount)}{p.plotNumber ? ` · Plot ${p.plotNumber}` : ""}{p.customerName ? ` · ${p.customerName}` : ""}
                   </div>
                   <div className="truncate text-[10px] text-[var(--brand-ink)]/45">
-                    {p.status === "approved" ? `Approved${p.approvedBy ? ` · ${p.approvedBy}` : ""}` : `Rejected${p.rejectionRemark ? `: ${p.rejectionRemark}` : ""}`}
+                    {p.recordedByName ? `${p.recordedByName} · ` : ""}Approved{p.approvedBy ? ` · ${p.approvedBy}` : ""}
                   </div>
                 </div>
                 <Clock className="h-3 w-3 shrink-0 text-[var(--brand-ink)]/30" />

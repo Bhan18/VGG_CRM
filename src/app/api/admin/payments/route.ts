@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/attendance/staff-auth";
 import { getServerSupabase } from "@/lib/agent/server-supabase";
+import { getAttendanceAdminClient } from "@/lib/attendance/client";
 import { errorResponse, withAttendanceErrorHandler, jsonNoCache } from "@/lib/attendance/server-context";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,8 @@ async function labels(
 
 /**
  * GET /api/admin/payments
- * Pending BM recordings + recently decided (last 50), for the admin queue.
+ * Pending BM recordings + recently APPROVED ones submitted by branch
+ * managers (exclusively — website-recorded and rejected rows excluded).
  */
 export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
   const guard = await requireAdminSession(req);
@@ -65,21 +67,33 @@ export const GET = withAttendanceErrorHandler(async (req: NextRequest) => {
   const sb = getServerSupabase();
   if (!sb) return errorResponse("Service not configured.", 503);
 
-  const [pendingRes, recentRes] = await Promise.all([
+  // Branch-manager identities live in the attendance project.
+  const att = getAttendanceAdminClient();
+  const { data: bmRows } = await att
+    .from("attendance_employees")
+    .select("id")
+    .eq("role", "BRANCH_MANAGER");
+  const bmIds = new Set((bmRows ?? []).map((b: { id: string }) => b.id));
+
+  const [pendingRes, approvedRes] = await Promise.all([
     sb.from("payments").select("*").eq("status", "pending").order("created_at", { ascending: true }).limit(100),
     sb
       .from("payments")
       .select("*")
-      .in("status", ["approved", "rejected"])
+      .eq("status", "approved")
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(100),
   ]);
   if (pendingRes.error) return errorResponse("Could not load pending payments.", 500);
-  if (recentRes.error) return errorResponse("Could not load recent payments.", 500);
+  if (approvedRes.error) return errorResponse("Could not load recent payments.", 500);
+
+  const recentBm = ((approvedRes.data ?? []) as Record<string, unknown>[])
+    .filter((r) => r.recorded_by && bmIds.has(r.recorded_by as string))
+    .slice(0, 50);
 
   const [pending, recent] = await Promise.all([
     labels(sb, (pendingRes.data ?? []) as Record<string, unknown>[]),
-    labels(sb, (recentRes.data ?? []) as Record<string, unknown>[]),
+    labels(sb, recentBm),
   ]);
 
   return jsonNoCache({ pending, recent });
