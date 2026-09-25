@@ -74,6 +74,7 @@ export function BmPaymentsTab() {
         <RecordForm
           customers={customersQ.data ?? []}
           customersLoading={customersQ.isLoading}
+          customersError={customersQ.isError ? customersQ.error.message : null}
           onDone={() => setShowForm(false)}
         />
       )}
@@ -253,7 +254,7 @@ function CustomerCard({ customer: c, onChange }: { customer: BmCustomer; onChang
   );
 }
 
-function RecordForm({ customers, customersLoading, onDone }: { customers: BmCustomer[]; customersLoading: boolean; onDone: () => void }) {
+function RecordForm({ customers, customersLoading, customersError, onDone }: { customers: BmCustomer[]; customersLoading: boolean; customersError: string | null; onDone: () => void }) {
   const record = useRecordBmPayment();
   const [customerId, setCustomerId] = useState("");
   const [plotId, setPlotId] = useState("");
@@ -349,6 +350,11 @@ function RecordForm({ customers, customersLoading, onDone }: { customers: BmCust
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 rounded-xl border p-3" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 15%, #e5e0d4)", background: "color-mix(in srgb, var(--brand-emerald) 3%, white)" }}>
+      {customersError && (
+        <div className="rounded-lg px-3 py-2 text-xs font-medium" style={{ background: "color-mix(in srgb, var(--brand-checkout) 8%, white)", color: "var(--brand-checkout)" }}>
+          Couldn't load customers: {customersError}
+        </div>
+      )}
       {!customer && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-[var(--brand-ink)]/70">Customer *</span>
