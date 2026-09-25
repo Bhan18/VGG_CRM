@@ -219,11 +219,11 @@ function CustomerPicker({
               <div className="shrink-0 text-right">
                 <div
                   className="text-xs font-semibold tabular-nums"
-                  style={{ color: c.totalOutstanding > 0 ? "var(--brand-checkout)" : "var(--brand-emerald)" }}
+                  style={{ color: "var(--brand-checkout)" }}
                 >
-                  {c.totalOutstanding > 0 ? inrCompact(c.totalOutstanding) : "Cleared"}
+                  {inrCompact(c.totalOutstanding)}
                 </div>
-                <div className="text-[10px] text-[var(--brand-ink)]/45">due</div>
+                <div className="text-[10px] text-[var(--brand-ink)]/45">pending</div>
               </div>
             </button>
           ))
@@ -239,7 +239,7 @@ function CustomerCard({ customer: c, onChange }: { customer: BmCustomer; onChang
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold">{c.name}</div>
         <div className="truncate text-[11px] text-[var(--brand-ink)]/55">
-          Plot {c.plots.map((p) => p.plotNumber).join(", ")} · Due {inrCompact(c.totalOutstanding)}
+          Plot {c.plots.map((p) => p.plotNumber).join(", ")} · {inrCompact(c.totalOutstanding)} pending
         </div>
       </div>
       <button
@@ -403,7 +403,7 @@ function RecordForm({ customers, customersLoading, customersError, onDone }: { c
                 >
                   <div className="text-xs font-semibold">Plot {p.plotNumber}</div>
                   <div className="text-[10px] tabular-nums" style={{ color: "var(--brand-checkout)" }}>
-                    Due {inrCompact(p.balance)}
+                    {inrCompact(p.balance)} pending
                   </div>
                 </button>
               );
@@ -413,10 +413,11 @@ function RecordForm({ customers, customersLoading, customersError, onDone }: { c
       )}
 
       {plot && (
-        <div className="grid grid-cols-3 gap-2 rounded-xl bg-white p-2.5 text-center" style={{ border: "1px solid color-mix(in srgb, var(--brand-emerald) 12%, #e5e0d4)" }}>
-          <MiniStat label="Price" value={inrCompact(plot.totalPrice)} />
-          <MiniStat label="Paid" value={inrCompact(plot.paid)} good />
-          <MiniStat label="Balance" value={inrCompact(plot.balance)} alert />
+        <div className="rounded-xl bg-white p-2.5 text-center" style={{ border: "1px solid color-mix(in srgb, var(--brand-emerald) 12%, #e5e0d4)" }}>
+          <div className="text-[10px] text-[var(--brand-ink)]/50">Pending collection</div>
+          <div className="text-base font-semibold tabular-nums" style={{ color: "var(--brand-checkout)" }}>
+            {inr(plot.balance)}
+          </div>
         </div>
       )}
 
@@ -627,20 +628,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="flex flex-col gap-1.5">
       <label className="text-xs font-medium text-[var(--brand-ink)]/70">{label}</label>
       {children}
-    </div>
-  );
-}
-
-function MiniStat({ label, value, good, alert }: { label: string; value: string; good?: boolean; alert?: boolean }) {
-  return (
-    <div>
-      <div className="text-[10px] text-[var(--brand-ink)]/50">{label}</div>
-      <div
-        className="text-xs font-semibold tabular-nums"
-        style={good ? { color: "var(--brand-emerald)" } : alert ? { color: "var(--brand-checkout)" } : undefined}
-      >
-        {value}
-      </div>
     </div>
   );
 }

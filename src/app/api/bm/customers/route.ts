@@ -5,9 +5,16 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // GET /api/bm/customers — every customer holding a recordable plot
-// (booked / reserved / sold), with their plots, per-plot paid/balance and
-// total outstanding. Sorted by outstanding descending so the biggest dues
-// surface first. Balance math mirrors the admin app (discounts included).
+// (booked / reserved / sold), with their plots and pending amounts.
+// Sorted by pending descending so the biggest collections surface first.
+// Balance math mirrors the admin app (discounts included).
+//
+// Display rules (collection view):
+//   - Only dues of DUE_THRESHOLD (₹50k) and below are listed. Cleared
+//     plots (0) and larger balances are hidden.
+//   - Paid/total figures are computed server-side but never displayed.
+
+const DUE_THRESHOLD = 50000;
 
 type PlotRow = {
   id: string;
@@ -117,7 +124,9 @@ export async function GET(req: NextRequest) {
           bookingId: p.booking_id,
           saleId: p.sale_id,
         };
-      });
+      })
+      // Collection view: hide cleared plots and dues above threshold.
+      .filter((p) => p.balance > 0 && p.balance <= DUE_THRESHOLD);
     const totalOutstanding = cPlots.reduce((s, p) => s + p.balance, 0);
     return {
       id: c.id,
@@ -135,7 +144,7 @@ export async function GET(req: NextRequest) {
       totalPaid: cPlots.reduce((s, p) => s + p.paid, 0),
       plots: cPlots,
     };
-  });
+  }).filter((c) => c.plots.length > 0);
 
   customers.sort((a, b) => b.totalOutstanding - a.totalOutstanding);
 
