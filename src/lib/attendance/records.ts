@@ -821,3 +821,258 @@ export async function getExportRows(opts: {
     };
   });
 }
+
+// ---- MONTHLY REPORT (admin attendance tab) ------------------------------
+// One query returns every active employee with a per-day breakdown for a
+// month, so the whole team's attendance is visible in a single dashboard.
+//
+// Working days are assumed Mon–Fri (the app has no weekly-off setting yet).
+// "Absent" is derived: working days that elapsed in the timezone up to today
+// minus attended days and leave days. Past months count the full month;
+// the current month counts only days that have already passed. Weekends are
+// excluded everywhere.
+
+export type MonthlyDayRow = {
+  date: string; // YYYY-MM-DD
+  weekday: number; // 0 = Sunday .. 6
+  status: string | null; // record status, or null when no record
+  checkIn: string | null;
+  checkOut: string | null;
+  workingMinutes: number | null;
+  checkInPhoto: string | null;
+  checkOutPhoto: string | null;
+  reason: string | null;
+  isWeekend: boolean;
+  inFuture: boolean;
+};
+
+export type MonthlyEmployee = {
+  id: string;
+  employeeCode: string;
+  name: string;
+  department: string;
+  role: string;
+  profilePhoto: string | null;
+  present: number;
+  late: number;
+  halfDay: number;
+  onLeave: number;
+  cancelled: number;
+  absent: number;
+  workingDaysElapsed: number;
+  attendanceRate: number; // 0-100
+  totalMinutes: number;
+  days: MonthlyDayRow[];
+};
+
+export type MonthlyReport = {
+  month: string; // YYYY-MM
+  timezone: string;
+  departments: string[];
+  totals: {
+    employees: number;
+    workingDaysElapsed: number;
+    present: number;
+    late: number;
+    halfDay: number;
+    onLeave: number;
+    absent: number;
+    cancelled: number;
+    attendanceRate: number;
+  };
+  employees: MonthlyEmployee[];
+};
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+
+function daysInMonth(yy: number, mm: number): number {
+  return new Date(yy, mm, 0).getDate();
+}
+
+function weekdayCount(yy: number, mm: number, fromDay: number, toDay: number): number {
+  let count = 0;
+  for (let d = fromDay; d <= toDay; d++) {
+    const wd = new Date(yy, mm - 1, d).getDay();
+    if (wd >= 1 && wd <= 5) count++;
+  }
+  return count;
+}
+
+/** "YYYY-MM-DD" for `date` in the given IANA timezone. */
+function dateStrInZone(tz: string, date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+export async function getMonthlyReport(opts: {
+  month: string; // YYYY-MM
+  department?: string;
+}): Promise<MonthlyReport> {
+  const supabase = getAttendanceAdminClient();
+  const settings = await getSettings();
+  const tz = settings.timezone;
+
+  const [yy, mm] = opts.month.split("-").map(Number);
+  if (!yy || yy < 2000 || yy > 2100 || !mm || mm < 1 || mm > 12) {
+    throw new Error(`Invalid month: ${opts.month}`);
+  }
+
+  const todayStr = dateStrInZone(tz);
+  const isCurrentMonth = todayStr.startsWith(opts.month);
+  const elapsedThrough =
+    isCurrentMonth ? Number(todayStr.slice(8, 10)) : daysInMonth(yy, mm);
+  const workingDaysElapsed = weekdayCount(yy, mm, 1, elapsedThrough);
+  const dim = daysInMonth(yy, mm);
+
+  const dayOneWeekday = new Date(yy, mm - 1, 1).getDay();
+
+  // Active employees (all of them — employees with no records must still
+  // appear so absence is visible), optionally filtered by department.
+  let empQuery = supabase
+    .from("attendance_employees")
+    .select("id, employee_code, name, department, role, profile_photo")
+    .eq("status", "ACTIVE")
+    .order("name", { ascending: true });
+  if (opts.department) empQuery = empQuery.eq("department", opts.department);
+
+  const { data: employees, error: empError } = await empQuery;
+  if (empError) throw new Error(empError.message);
+
+  // All records this month (+ employee join only for the dept filter).
+  let recQuery = supabase
+    .from("attendance_records")
+    .select("*, attendance_employees!inner(employee_code, department)")
+    .gte("attendance_date", `${opts.month}-01`)
+    .lte("attendance_date", `${opts.month}-${pad2(dim)}`)
+    .order("attendance_date", { ascending: true });
+  if (opts.department) recQuery = recQuery.eq("attendance_employees.department", opts.department);
+
+  const { data: records, error: recError } = await recQuery;
+  if (recError) throw new Error(recError.message);
+
+  const byKey = new Map<string, Record<string, any>>();
+  for (const r of records ?? []) {
+    byKey.set(`${r.employee_id}|${r.attendance_date}`, r);
+  }
+
+  const departments = Array.from(
+    new Set((employees ?? []).map((e) => e.department)),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const employeeRows: MonthlyEmployee[] = [];
+  const totals = {
+    present: 0,
+    late: 0,
+    halfDay: 0,
+    onLeave: 0,
+    cancelled: 0,
+    absent: 0,
+  };
+  let attendedTotal = 0;
+  let eligibleTotal = 0;
+
+  for (const e of employees ?? []) {
+    const days: MonthlyDayRow[] = [];
+    let present = 0, late = 0, halfDay = 0, onLeave = 0, cancelled = 0, totalMinutes = 0;
+
+    for (let d = 1; d <= dim; d++) {
+      const dateStr = `${opts.month}-${pad2(d)}`;
+      const weekday = new Date(yy, mm - 1, d).getDay();
+      const inFuture = dateStr > todayStr;
+      const isWeekend = weekday === 0 || weekday === 6;
+
+      const rec = byKey.get(`${e.id}|${dateStr}`);
+      const row: MonthlyDayRow = {
+        date: dateStr,
+        weekday,
+        status: null,
+        checkIn: null,
+        checkOut: null,
+        workingMinutes: null,
+        checkInPhoto: null,
+        checkOutPhoto: null,
+        reason: null,
+        isWeekend,
+        inFuture,
+      };
+
+      if (rec) {
+        row.checkIn = rec.check_in_time ?? null;
+        row.checkOut = rec.check_out_time ?? null;
+        row.workingMinutes = rec.working_minutes ?? null;
+        row.checkInPhoto = rec.check_in_photo ?? null;
+        row.checkOutPhoto = rec.check_out_photo ?? null;
+        row.reason = rec.check_in_reason || rec.check_out_reason || null;
+        row.status = rec.status ?? null;
+        if (rec.status === "PRESENT") present++;
+        else if (rec.status === "LATE") late++;
+        else if (rec.status === "HALF_DAY") halfDay++;
+        else if (rec.status === "ON_LEAVE") onLeave++;
+        else if (rec.status === "CANCELLED") cancelled++;
+        totalMinutes += rec.working_minutes ?? 0;
+      }
+
+      days.push(row);
+    }
+
+    // Absent = elapsed working days minus the days actually attended or on
+    // leave. Cancelled records fold back into absent (the day wasn't worked).
+    const attended = present + late + halfDay;
+    const absent = Math.max(0, workingDaysElapsed - attended - onLeave);
+    const eligible = workingDaysElapsed - onLeave;
+    const attendanceRate =
+      eligible > 0 ? Math.round((attended / eligible) * 100) : 0;
+
+    employeeRows.push({
+      id: e.id,
+      employeeCode: e.employee_code,
+      name: e.name,
+      department: e.department,
+      role: e.role,
+      profilePhoto: e.profile_photo ?? null,
+      present,
+      late,
+      halfDay,
+      onLeave,
+      cancelled,
+      absent,
+      workingDaysElapsed,
+      attendanceRate,
+      totalMinutes,
+      days,
+    });
+
+    totals.present += present;
+    totals.late += late;
+    totals.halfDay += halfDay;
+    totals.onLeave += onLeave;
+    totals.cancelled += cancelled;
+    totals.absent += absent;
+    attendedTotal += attended;
+    eligibleTotal += eligible;
+  }
+
+  const averageRate =
+    eligibleTotal > 0 ? Math.round((attendedTotal / eligibleTotal) * 100) : 0;
+
+  return {
+    month: opts.month,
+    timezone: tz,
+    departments,
+    totals: {
+      employees: (employees ?? []).length,
+      workingDaysElapsed,
+      ...totals,
+      attendanceRate: averageRate,
+    },
+    employees: employeeRows,
+  };
+}
