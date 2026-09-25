@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // Phone testing over LAN hits the dev server via a network IP/hostname,
+  // which Next.js blocks by default. Extra origins (comma-separated) can be
+  // allowed per machine via ALLOWED_DEV_ORIGINS in .env.local (gitignored).
+  allowedDevOrigins: (process.env.ALLOWED_DEV_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 };
 
 export default nextConfig;
