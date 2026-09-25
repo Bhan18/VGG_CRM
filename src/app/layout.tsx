@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agent",
-  description: "Field workforce companion app",
+  title: "VGG Staff",
+  description: "VGG Staff Workplace",
   icons: {
     icon: "/icon",
   },

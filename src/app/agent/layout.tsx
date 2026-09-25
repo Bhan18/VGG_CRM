@@ -8,8 +8,8 @@ import { BrandingBootstrap } from "@/components/agent/branding-bootstrap";
 // document.title and <link rel="icon"> with the admin-configured values
 // as soon as the app boots.
 export const metadata: Metadata = {
-  title: "Agent",
-  description: "Field workforce companion app",
+  title: "VGG",
+  description: "work companion app",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "Agent",
+    title: "VGG",
     statusBarStyle: "black-translucent",
   },
 };
