@@ -209,26 +209,11 @@ function CustomerPicker({
               className="agent-press flex w-full items-center gap-3 border-b py-3 text-left"
               style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 8%, transparent)" }}
             >
-              {c.photo ? (
-                <img src={c.photo} alt="" className="h-10 w-10 flex-shrink-0 rounded-full object-cover" />
-              ) : (
-                <div
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                  style={{ background: "var(--brand-emerald)" }}
-                >
-                  {initials(c.name)}
-                </div>
-              )}
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{c.name}</div>
                 <div className="truncate text-[11px] text-[var(--brand-ink)]/55">
-                  {c.phone ? `${c.phone} · ` : ""}Plot {c.plots.map((p) => p.plotNumber).join(", ")}
+                  Plot {c.plots.map((p) => p.plotNumber).join(", ")}
                 </div>
-                {(c.city || c.occupation) && (
-                  <div className="truncate text-[10px] text-[var(--brand-ink)]/40">
-                    {[c.city, c.occupation].filter(Boolean).join(" · ")}
-                  </div>
-                )}
               </div>
               <div className="shrink-0 text-right">
                 <div
@@ -248,56 +233,24 @@ function CustomerPicker({
 }
 
 function CustomerCard({ customer: c, onChange }: { customer: BmCustomer; onChange: () => void }) {
-  const place = [c.address, c.city, c.state].filter(Boolean).join(", ");
   return (
-    <div className="rounded-xl border bg-white p-3" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 15%, #e5e0d4)" }}>
-      <div className="flex items-center gap-3">
-        {c.photo ? (
-          <img src={c.photo} alt="" className="h-11 w-11 flex-shrink-0 rounded-full object-cover" />
-        ) : (
-          <div
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-            style={{ background: "var(--brand-emerald)" }}
-          >
-            {initials(c.name)}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold">{c.name}</div>
-          <div className="truncate text-[11px] tabular-nums text-[var(--brand-ink)]/55">
-            {c.phone ?? "No phone"}{c.alternatePhone ? ` · ${c.alternatePhone}` : ""}
-          </div>
+    <div className="flex items-center gap-3 rounded-xl border bg-white p-3" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 15%, #e5e0d4)" }}>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold">{c.name}</div>
+        <div className="truncate text-[11px] text-[var(--brand-ink)]/55">
+          Plot {c.plots.map((p) => p.plotNumber).join(", ")} · Due {inrCompact(c.totalOutstanding)}
         </div>
-        <button
-          type="button"
-          onClick={onChange}
-          className="agent-press shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"
-          style={{ background: "color-mix(in srgb, var(--brand-emerald) 10%, white)", color: "var(--brand-emerald)" }}
-        >
-          Change
-        </button>
       </div>
-      {(c.email || place || c.occupation) && (
-        <div className="mt-2 space-y-0.5 border-t pt-2 text-[11px] text-[var(--brand-ink)]/65" style={{ borderColor: "color-mix(in srgb, var(--brand-emerald) 8%, transparent)" }}>
-          {c.email && <div className="truncate">✉ {c.email}</div>}
-          {place && <div className="truncate">⌂ {place}</div>}
-          {c.occupation && <div className="truncate">⚒ {c.occupation}</div>}
-        </div>
-      )}
-      {c.remarks && (
-        <div className="mt-1.5 rounded-lg px-2 py-1 text-[11px] text-[var(--brand-ink)]/55" style={{ background: "color-mix(in srgb, var(--brand-gold) 8%, white)" }}>
-          {c.remarks}
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={onChange}
+        className="agent-press shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"
+        style={{ background: "color-mix(in srgb, var(--brand-emerald) 10%, white)", color: "var(--brand-emerald)" }}
+      >
+        Change
+      </button>
     </div>
   );
-}
-
-function initials(name: string): string {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
 function RecordForm({ customers, customersLoading, onDone }: { customers: BmCustomer[]; customersLoading: boolean; onDone: () => void }) {
