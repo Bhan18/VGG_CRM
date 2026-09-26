@@ -194,7 +194,12 @@ export function useUpdateLead() {
   });
 }
 
+<<<<<<< HEAD
 export function useAddLeadActivity() {  const qc = useQueryClient();
+=======
+export function useAddLeadActivity() {
+  const qc = useQueryClient();
+>>>>>>> b5863bd91c6df220ccc66682e8ec1aff705e97b6
   return useMutation<LeadActivity, Error, { id: string; type: LeadActivityType; content: string }>({
     mutationFn: async ({ id, type, content }) => {
       const res = await fetch(`/api/attendance/staff/leads/${id}`, {
@@ -254,6 +259,7 @@ export function useSubmitAttendance() {
     },
   });
 }
+<<<<<<< HEAD
 
 // ─── Branch-manager payments (main project, pending until approved) ─────
 
@@ -548,3 +554,5 @@ export function useDecideAdminPayment() {
     },
   });
 }
+=======
+>>>>>>> b5863bd91c6df220ccc66682e8ec1aff705e97b6

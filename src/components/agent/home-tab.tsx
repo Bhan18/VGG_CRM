@@ -28,6 +28,10 @@ import {
   ChevronRight,
   CalendarCheck,
   ArrowRight,
+<<<<<<< HEAD
+=======
+  Wallet,
+>>>>>>> b5863bd91c6df220ccc66682e8ec1aff705e97b6
 } from "lucide-react";
 import type { AgentTodayRecord } from "@/lib/agent/types";
 
@@ -78,7 +82,11 @@ export function HomeTab({ onCheckIn, onCheckOut }: HomeTabProps) {
         />
       </section>
 
+<<<<<<< HEAD
       {/* Quick actions — 2×2 grid */}
+=======
+      {/* Quick actions — 2×3 grid */}
+>>>>>>> b5863bd91c6df220ccc66682e8ec1aff705e97b6
       <section>
         <h2 className="mb-3 text-[15px] font-semibold tracking-tight">Quick access</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -89,6 +97,15 @@ export function HomeTab({ onCheckIn, onCheckOut }: HomeTabProps) {
             onClick={() => setTab("attendance")}
           />
           <QuickAction
+<<<<<<< HEAD
+=======
+            icon={Wallet}
+            label="Record Payment"
+            sub="By BM — pending approval"
+            onClick={() => setTab("payments")}
+          />
+          <QuickAction
+>>>>>>> b5863bd91c6df220ccc66682e8ec1aff705e97b6
             icon={FileText}
             label="Posts"
             sub={`${posts.data?.length ?? 0} updates`}
