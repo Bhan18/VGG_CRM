@@ -1,0 +1,531 @@
+
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  /* VGG Infra brand: deep forest emerald + sandalwood gold accent.
+     Daytime (light) theme tuned for a professional, calm, high-contrast look:
+     cool neutral surfaces, deeper text, refined borders. */
+  --background: oklch(0.984 0.003 240);
+  --foreground: oklch(0.21 0.02 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.02 250);
+  --primary: oklch(0.44 0.09 160); /* deep professional emerald */
+  --primary-foreground: oklch(0.985 0.005 160);
+  --secondary: oklch(0.962 0.005 245);
+  --secondary-foreground: oklch(0.27 0.03 160);
+  --muted: oklch(0.962 0.005 245);
+  --muted-foreground: oklch(0.5 0.015 250);
+  --accent: oklch(0.79 0.12 82); /* sandalwood gold */
+  --accent-foreground: oklch(0.28 0.05 75);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.91 0.006 245);
+  --input: oklch(0.91 0.006 245);
+  --ring: oklch(0.44 0.09 160);
+  --chart-1: oklch(0.5 0.1 160); /* emerald */
+  --chart-2: oklch(0.72 0.13 82);   /* gold */
+  --chart-3: oklch(0.58 0.14 35);   /* terracotta */
+  --chart-4: oklch(0.52 0.08 230);  /* slate blue */
+  --chart-5: oklch(0.62 0.16 320);  /* magenta */
+  --sidebar: oklch(0.2 0.03 155); /* dark forest sidebar */
+  --sidebar-foreground: oklch(0.96 0.008 120);
+  --sidebar-primary: oklch(0.79 0.12 82);
+  --sidebar-primary-foreground: oklch(0.2 0.04 80);
+  --sidebar-accent: oklch(0.29 0.04 155);
+  --sidebar-accent-foreground: oklch(0.96 0.008 120);
+  --sidebar-border: oklch(0.3 0.02 155 / 60%);
+  --sidebar-ring: oklch(0.79 0.12 82);
+}
+
+.dark {
+  --background: oklch(0.18 0.02 155);
+  --foreground: oklch(0.96 0.008 120);
+  --card: oklch(0.22 0.025 155);
+  --card-foreground: oklch(0.96 0.008 120);
+  --popover: oklch(0.22 0.025 155);
+  --popover-foreground: oklch(0.96 0.008 120);
+  --primary: oklch(0.78 0.13 85);
+  --primary-foreground: oklch(0.2 0.04 80);
+  --secondary: oklch(0.28 0.03 155);
+  --secondary-foreground: oklch(0.96 0.008 120);
+  --muted: oklch(0.26 0.025 155);
+  --muted-foreground: oklch(0.7 0.02 150);
+  --accent: oklch(0.55 0.11 155);
+  --accent-foreground: oklch(0.96 0.008 120);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.78 0.13 85);
+  --chart-1: oklch(0.6 0.12 155);
+  --chart-2: oklch(0.78 0.14 85);
+  --chart-3: oklch(0.65 0.16 35);
+  --chart-4: oklch(0.6 0.1 230);
+  --chart-5: oklch(0.7 0.16 320);
+  --sidebar: oklch(0.15 0.025 155);
+  --sidebar-foreground: oklch(0.96 0.008 120);
+  --sidebar-primary: oklch(0.78 0.13 85);
+  --sidebar-primary-foreground: oklch(0.2 0.04 80);
+  --sidebar-accent: oklch(0.26 0.03 155);
+  --sidebar-accent-foreground: oklch(0.96 0.008 120);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.78 0.13 85);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  .dark body {
+    background-image: none;
+  }
+}
+
+/* Subtle ambient wash on the daytime (light) shell for a calm, premium feel */
+body:not(.dark) {
+  background-image: radial-gradient(
+      ellipse 80% 50% at 50% -20%,
+      oklch(0.44 0.09 160 / 0.045),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 100% 110%,
+      oklch(0.79 0.12 82 / 0.04),
+      transparent 70%
+    );
+  background-attachment: fixed;
+}
+
+/* ============================================================
+   PREMIUM SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.84 0.005 245 / 0.6);
+  border-radius: 100px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.015 245 / 0.8);
+  background-clip: padding-box;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.35 0.02 155 / 0.6);
+  background-clip: padding-box;
+}
+
+/* ============================================================
+   GLASSMORPHISM UTILITY
+   ============================================================ */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.dark .glass {
+  background: rgba(22, 25, 35, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================================
+   SIDEBAR NAV — Premium animated links
+   ============================================================ */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sidebar-foreground);
+  opacity: 0.7;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.nav-link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 3px;
+  height: 60%;
+  background: var(--sidebar-primary);
+  border-radius: 0 4px 4px 0;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-link:hover {
+  background: var(--sidebar-accent);
+  opacity: 0.95;
+  transform: translateX(2px);
+}
+.nav-link.active {
+  background: linear-gradient(135deg, var(--sidebar-primary), oklch(0.6 0.1 85));
+  color: var(--sidebar-primary-foreground);
+  opacity: 1;
+  box-shadow: 0 4px 12px -3px oklch(0.78 0.13 85 / 0.35);
+}
+.nav-link.active::before {
+  transform: translateY(-50%) scaleY(1);
+}
+.nav-link.active .nav-icon {
+  color: var(--sidebar-primary-foreground);
+}
+
+/* ============================================================
+   METRIC CARDS — Premium hover + shimmer
+   ============================================================ */
+.metric-card {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.metric-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+.metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px -10px oklch(0.44 0.09 160 / 0.2);
+}
+.metric-card:hover::after {
+  left: 120%;
+}
+
+/* ============================================================
+   PLOT OVERLAY — Smooth interactive tiles
+   ============================================================ */
+.plot-overlay {
+  position: absolute;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease, filter 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+.plot-overlay:hover {
+  transform: scale(1.08) translateY(-1px);
+  filter: brightness(1.12);
+  box-shadow: 0 6px 16px -3px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+.plot-overlay.selected {
+  outline: 3px solid oklch(0.78 0.13 85);
+  outline-offset: 1px;
+  z-index: 11;
+  box-shadow: 0 0 0 4px oklch(0.78 0.13 85 / 0.2);
+}
+
+/* ============================================================
+   ANIMATIONS — Keyframes
+   ============================================================ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.44 0.09 160 / 0.15); }
+  50% { box-shadow: 0 0 0 6px oklch(0.44 0.09 160 / 0); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Animation utility classes */
+.view-enter {
+  animation: fadeUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+.scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.slide-in-left {
+  animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Stagger delays */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+
+/* ============================================================
+   SHIMMER SKELETON
+   ============================================================ */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    oklch(0.93 0.004 245) 25%,
+    oklch(0.965 0.004 245) 50%,
+    oklch(0.93 0.004 245) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.5rem;
+}
+.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    oklch(0.28 0.02 155) 25%,
+    oklch(0.32 0.025 155) 50%,
+    oklch(0.28 0.02 155) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* ============================================================
+   PREMIUM BUTTONS
+   ============================================================ */
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease;
+  pointer-events: none;
+}
+.btn-premium:active::before {
+  width: 200%;
+  height: 200%;
+}
+.btn-premium:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -4px oklch(0.44 0.09 160 / 0.3);
+}
+.btn-premium:active {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   PREMIUM CARD
+   ============================================================ */
+.card-premium {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.card-premium:hover {
+  box-shadow: 0 8px 24px -8px oklch(0.44 0.09 160 / 0.15);
+}
+
+/* ============================================================
+   ANIMATED GRADIENT BACKGROUND
+   ============================================================ */
+.gradient-animated {
+  background: linear-gradient(
+    -45deg,
+    oklch(0.44 0.09 160 / 0.05),
+    oklch(0.79 0.12 82 / 0.05),
+    oklch(0.52 0.08 160 / 0.03),
+    oklch(0.72 0.13 82 / 0.04)
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+/* ============================================================
+   TABLE — Premium styling
+   ============================================================ */
+.premium-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: oklch(0.972 0.003 245);
+  color: oklch(0.32 0.02 250);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+}
+.dark .premium-table-header {
+  background: oklch(0.22 0.025 155);
+}
+.premium-table-row {
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.premium-table-row:hover {
+  background: oklch(0.955 0.003 245 / 0.7);
+}
+.dark .premium-table-row:hover {
+  background: oklch(0.28 0.03 155 / 0.5);
+}
+
+/* ============================================================
+   PLOT CARD (PlotListPage)
+   ============================================================ */
+.plot-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+.plot-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.15);
+}
+.plot-card:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+/* ============================================================
+   LOADING SPINNER — Premium
+   ============================================================ */
+.spinner-premium {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid oklch(0.44 0.09 160 / 0.2);
+  border-top-color: oklch(0.44 0.09 160);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   TOAST ANIMATION
+   ============================================================ */
+.toast-enter {
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* ============================================================
+   FOCUS RING — Premium
+   ============================================================ */
+input:focus, select:focus, textarea:focus {
+  box-shadow: 0 0 0 3px oklch(0.44 0.09 160 / 0.12);
+  transition: box-shadow 0.2s ease;
+}
+
+/* ============================================================
+   BADGE — Premium
+   ============================================================ */
+.badge-premium {
+  transition: all 0.2s ease;
+}
+.badge-premium:hover {
+  transform: scale(1.05);
+}
+
+
